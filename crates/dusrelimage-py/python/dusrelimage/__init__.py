@@ -1036,10 +1036,10 @@ class PaletteColour:
 # Operations
 # ---------------------------------------------------------------------------
 
-def compress_image(image, *, quality=_UNSET, format=_UNSET,
+def compress_image(image, options=None, *, quality=_UNSET, format=_UNSET,
                    progressive=_UNSET, lossless=_UNSET, effort=_UNSET,
                    auto_orient=_UNSET, keep_exif=_UNSET, dpi=_UNSET,
-                   max_pixels=_UNSET, max_dimension=_UNSET, options=None):
+                   max_pixels=_UNSET, max_dimension=_UNSET):
     """Re-encode an image at ``quality`` (1-100, default 80).
 
     ``format`` keeps the input format when unset (TIFF input falls
@@ -1054,10 +1054,10 @@ def compress_image(image, *, quality=_UNSET, format=_UNSET,
     return _call(_native.compress_image, data, opts)
 
 
-def compress_to_size(image, target_bytes, *, quality=_UNSET, format=_UNSET,
+def compress_to_size(image, target_bytes, options=None, *, quality=_UNSET, format=_UNSET,
                      progressive=_UNSET, lossless=_UNSET, effort=_UNSET,
                      auto_orient=_UNSET, keep_exif=_UNSET, dpi=_UNSET,
-                     max_pixels=_UNSET, max_dimension=_UNSET, options=None):
+                     max_pixels=_UNSET, max_dimension=_UNSET):
     """Re-encode so the result is at most ``target_bytes`` bytes.
 
     Binary quality search (JPEG/AVIF only; PNG/WebP/GIF/BMP take one
@@ -1074,10 +1074,10 @@ def compress_to_size(image, target_bytes, *, quality=_UNSET, format=_UNSET,
     return _call(_native.compress_to_size, data, target_bytes, opts)
 
 
-def resize_image(image, *, width=_UNSET, height=_UNSET, percent=_UNSET,
+def resize_image(image, options=None, *, width=_UNSET, height=_UNSET, percent=_UNSET,
                  fit=_UNSET, filter=_UNSET, background=_UNSET,
                  auto_orient=_UNSET, keep_exif=_UNSET, dpi=_UNSET,
-                 max_pixels=_UNSET, max_dimension=_UNSET, options=None):
+                 max_pixels=_UNSET, max_dimension=_UNSET):
     """Resize an image: ``width`` and/or ``height``, or ``percent``.
 
     ``fit`` is ``"fit"`` (default) / ``"fill"`` / ``"stretch"`` /
@@ -1095,10 +1095,9 @@ def resize_image(image, *, width=_UNSET, height=_UNSET, percent=_UNSET,
     return _call(_native.resize_image, data, opts)
 
 
-def crop_image(image, *, x=_UNSET, y=_UNSET, width=_UNSET, height=_UNSET,
+def crop_image(image, options=None, *, x=_UNSET, y=_UNSET, width=_UNSET, height=_UNSET,
                anchor=_UNSET, auto_orient=_UNSET, keep_exif=_UNSET,
-               dpi=_UNSET, max_pixels=_UNSET, max_dimension=_UNSET,
-               options=None):
+               dpi=_UNSET, max_pixels=_UNSET, max_dimension=_UNSET):
     """Crop to the ``x``/``y``/``width``/``height`` rectangle.
 
     ``anchor`` (``"center"``, ``"top_left"``, ...) places a
@@ -1113,10 +1112,9 @@ def crop_image(image, *, x=_UNSET, y=_UNSET, width=_UNSET, height=_UNSET,
     return _call(_native.crop_image, data, opts)
 
 
-def convert_image(image, *, format=_UNSET, quality=_UNSET, background=_UNSET,
+def convert_image(image, options=None, *, format=_UNSET, quality=_UNSET, background=_UNSET,
                   progressive=_UNSET, auto_orient=_UNSET, keep_exif=_UNSET,
-                  dpi=_UNSET, max_pixels=_UNSET, max_dimension=_UNSET,
-                  options=None):
+                  dpi=_UNSET, max_pixels=_UNSET, max_dimension=_UNSET):
     """Convert to ``format`` (``"jpeg"`` / ``"png"`` / ``"webp"`` /
     ``"avif"`` / ``"gif"`` / ``"bmp"``) at ``quality`` (default 80).
 
@@ -1137,11 +1135,11 @@ def convert_image(image, *, format=_UNSET, quality=_UNSET, background=_UNSET,
     return _call(_native.convert_image, data, opts)
 
 
-def add_watermark(image, *, text=_UNSET, text_size=_UNSET, text_colour=_UNSET,
+def add_watermark(image, options=None, *, text=_UNSET, text_size=_UNSET, text_colour=_UNSET,
                   logo=_UNSET, logo_scale=_UNSET, opacity=_UNSET,
                   position=_UNSET, rotation_deg=_UNSET, margin=_UNSET,
                   auto_orient=_UNSET, keep_exif=_UNSET, dpi=_UNSET,
-                  max_pixels=_UNSET, max_dimension=_UNSET, options=None):
+                  max_pixels=_UNSET, max_dimension=_UNSET):
     """Stamp a text and/or logo watermark on an image.
 
     ``text`` is a string (size 48, white) or a ``{"text", "size",
@@ -1220,10 +1218,10 @@ def extract_palette(image, count=5):
     return results
 
 
-def make_collage(images, *, layout=_UNSET, gap=_UNSET, background=_UNSET,
+def make_collage(images, options=None, *, layout=_UNSET, gap=_UNSET, background=_UNSET,
                  width=_UNSET, height=_UNSET, cell_fit=_UNSET,
                  auto_orient=_UNSET, keep_exif=_UNSET, dpi=_UNSET,
-                 max_pixels=_UNSET, max_dimension=_UNSET, options=None):
+                 max_pixels=_UNSET, max_dimension=_UNSET):
     """Build a collage from several images.
 
     ``layout`` is ``"grid"`` (default 2x2), ``"row"``, ``"column"``,
@@ -1247,10 +1245,9 @@ def make_collage(images, *, layout=_UNSET, gap=_UNSET, background=_UNSET,
     return _call(_native.make_collage, imgs, opts)
 
 
-def pixelate_image(image, *, x=_UNSET, y=_UNSET, width=_UNSET, height=_UNSET,
+def pixelate_image(image, options=None, *, x=_UNSET, y=_UNSET, width=_UNSET, height=_UNSET,
                    block_size=_UNSET, auto_orient=_UNSET, keep_exif=_UNSET,
-                   dpi=_UNSET, max_pixels=_UNSET, max_dimension=_UNSET,
-                   options=None):
+                   dpi=_UNSET, max_pixels=_UNSET, max_dimension=_UNSET):
     """Pixelate a rectangle (default: the whole image).
 
     ``width`` / ``height`` of 0 (or unset) mean "to the right/bottom
@@ -1266,9 +1263,8 @@ def pixelate_image(image, *, x=_UNSET, y=_UNSET, width=_UNSET, height=_UNSET,
     return _call(_native.pixelate_image, data, opts)
 
 
-def get_image_info(image, *, auto_orient=_UNSET, keep_exif=_UNSET,
-                   dpi=_UNSET, max_pixels=_UNSET, max_dimension=_UNSET,
-                   options=None):
+def get_image_info(image, options=None, *, auto_orient=_UNSET, keep_exif=_UNSET,
+                   dpi=_UNSET, max_pixels=_UNSET, max_dimension=_UNSET):
     """Describe an image without transforming it.
 
     Returns ``{"format", "width", "height", "has_alpha",
@@ -1283,8 +1279,8 @@ def get_image_info(image, *, auto_orient=_UNSET, keep_exif=_UNSET,
     return _call(_native.get_image_info, data, opts)
 
 
-def bulk_process(images, op, *, target_bytes=None, annotations=None,
-                 x=None, y=None, count=None, options=None):
+def bulk_process(images, op, options=None, *, target_bytes=None, annotations=None,
+                 x=None, y=None, count=None):
     """Run one op over many images in a single call.
 
     ``op`` is ``"compress"``, ``"compress_to_size"`` (needs

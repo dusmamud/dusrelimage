@@ -27,7 +27,7 @@ publish = false
 
 [changelog]
 body = """
-## [{{ version }}] - {{ date }}
+## [{{ version }}]
 
 ### Added
 
