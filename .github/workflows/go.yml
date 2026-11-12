@@ -1,0 +1,43 @@
+name: Go
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "packages/go/**"
+      - "crates/dusrelimage-ffi/**"
+      - "crates/dusrelimage/**"
+      - ".github/workflows/go.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "packages/go/**"
+      - "crates/dusrelimage-ffi/**"
+      - "crates/dusrelimage/**"
+      - ".github/workflows/go.yml"
+
+jobs:
+  go:
+    name: Go binding (vet + shared vectors)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      # The Go package links the FFI static library out of
+      # target/release (no prebuilt binary is ever downloaded).
+      - name: Build FFI library
+        run: bash packages/go/scripts/build-ffi.sh
+      # The shared-vector tests generate fixtures with the CLI mock
+      # command, so the CLI must be built before `go test`.
+      - name: Build CLI (test fixtures)
+        run: cargo build -p dusrelimage-cli --release
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+      - name: vet
+        working-directory: packages/go
+        run: go vet ./...
+      - name: test
+        working-directory: packages/go
+        run: go test ./...
