@@ -4,6 +4,8 @@ members = [
     "crates/dusrelimage-cli",
     "crates/dusrelimage-py",
     "crates/dusrelimage-wasm",
+    "crates/dusrelimage-ffi",
+    "crates/dusrelimage-uniffi",
 ]
 resolver = "2"
 

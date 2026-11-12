@@ -25,6 +25,16 @@ name = "dusrelimage-wasm"
 release = false
 publish = false
 
+[[package]]
+name = "dusrelimage-ffi"
+release = false
+publish = false
+
+[[package]]
+name = "dusrelimage-uniffi"
+release = false
+publish = false
+
 # No custom [changelog] body: release-plz 0.4.3's `update` context
 # provides neither {{ date }} nor {{ changes }} for a custom body
 # template (both failed in CI), so the default changelog format is
