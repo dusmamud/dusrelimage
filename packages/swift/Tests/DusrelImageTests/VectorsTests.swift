@@ -614,7 +614,7 @@ private func assertExpected(
                         guard let pair = jsonArray(item), pair.count == 2,
                               let x = (pair[0] as? NSNumber)?.intValue,
                               let y = (pair[1] as? NSNumber)?.intValue else { continue }
-                        if !rgbaEqual(try pixels.pixel(x: x, y: y), try inputPixels.pixel(x: x, y: y)) {
+                        if rgbaEqual(try pixels.pixel(x: x, y: y), try inputPixels.pixel(x: x, y: y)) {
                             failures.append("case \(caseId): pixel (\(x),\(y)) should differ from the input")
                         }
                     }

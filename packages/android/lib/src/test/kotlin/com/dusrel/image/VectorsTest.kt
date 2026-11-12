@@ -1,13 +1,11 @@
 package com.dusrel.image
 
-import java.awt.image.BufferedImage
-import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.DataOutputStream
 import java.io.File
 import java.util.zip.CRC32
 import java.util.zip.Deflater
-import javax.imageio.ImageIO
+import java.util.zip.Inflater
 import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
@@ -34,12 +32,13 @@ import org.junit.runners.Parameterized
  * unknown fixture kinds, ops, bulk ops or expected keys throw naming
  * the case id instead of silently skipping the case.
  *
- * Pixel checks decode PNG/JPEG/BMP/GIF output with [ImageIO] (desktop
- * JVM); anything else falls back to [DusrelImage.pickColour] per pixel
- * (only the JPEG-flatten case needs that). AVIF output cannot be
- * decoded back in this build (no AVIF decoder): a case that only
- * asserts the header/size may skip the decode; anything asserting
- * dims must be decodable.
+ * Pixel checks decode PNG output with the minimal decoder below
+ * (`java.awt` / `javax.imageio` do not exist on the Android
+ * unit-test classpath); anything else falls back to
+ * [DusrelImage.pickColour] per pixel (only the JPEG-flatten case
+ * needs that). AVIF output cannot be decoded back in this build
+ * (no AVIF decoder): a case that only asserts the header/size may
+ * skip the decode; anything asserting dims must be decodable.
  *
  * These are JVM unit tests: they load the HOST cdylib built by
  * `cargo build -p dusrelimage-uniffi --release`, via the
@@ -628,10 +627,153 @@ private fun runCase(c: JSONObject, caseId: String): RunResult {
 // Assertions on the expected object
 // ---------------------------------------------------------------------------
 
-/** Pixel access over an output image: [ImageIO] decode when possible, else [DusrelImage.pickColour] per pixel. */
+/** Decoded PNG pixels, stored ARGB — the same layout `BufferedImage.getRGB` used to give. */
+private class DecodedPng(val width: Int, val height: Int, val argb: IntArray)
+
+private fun paeth(a: Int, b: Int, c: Int): Int {
+    val p = a + b - c
+    val pa = kotlin.math.abs(p - a)
+    val pb = kotlin.math.abs(p - b)
+    val pc = kotlin.math.abs(p - c)
+    return if (pa <= pb && pa <= pc) a else if (pb <= pc) b else c
+}
+
+/**
+ * Minimal PNG decoder (test-only). Handles colour types 0 (grey),
+ * 2 (RGB), 3 (palette), 4 (grey+alpha) and 6 (RGBA), bit depths 8
+ * and 16 (16-bit takes the high byte), all five filters, non-interlaced
+ * images. Returns null for anything else (JPEG/BMP/GIF/WebP/AVIF/TIFF,
+ * interlaced, sub-byte depths, corrupt data) — the caller falls back
+ * to [DusrelImage.pickColour] per pixel. `tRNS` is ignored (the core
+ * never emits it).
+ */
+private fun decodePng(data: ByteArray): DecodedPng? {
+    val signature = byteArrayOf(0x89.toByte(), 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A)
+    if (data.size < 8 || !data.copyOf(8).contentEquals(signature)) return null
+    fun u32be(off: Int): Int =
+        ((data[off].toInt() and 0xFF) shl 24) or ((data[off + 1].toInt() and 0xFF) shl 16) or
+            ((data[off + 2].toInt() and 0xFF) shl 8) or (data[off + 3].toInt() and 0xFF)
+    var pos = 8
+    var width = 0
+    var height = 0
+    var bitDepth = 8
+    var colourType = 2
+    var interlace = 0
+    var palette: ByteArray? = null
+    val idat = ByteArrayOutputStream()
+    while (pos + 8 <= data.size) {
+        val len = u32be(pos)
+        if (len < 0 || pos + 12 + len > data.size) return null
+        val type = String(data, pos + 4, 4, Charsets.US_ASCII)
+        val chunk = data.copyOfRange(pos + 8, pos + 8 + len)
+        when (type) {
+            "IHDR" -> {
+                if (chunk.size < 13) return null
+                width = u32be(pos + 8)
+                height = u32be(pos + 12)
+                bitDepth = chunk[8].toInt() and 0xFF
+                colourType = chunk[9].toInt() and 0xFF
+                interlace = chunk[12].toInt() and 0xFF
+            }
+            "PLTE" -> palette = chunk
+            "IDAT" -> idat.write(chunk)
+            "IEND" -> break
+        }
+        pos += 12 + len
+    }
+    if (width <= 0 || height <= 0 || interlace != 0) return null
+    if (bitDepth != 8 && bitDepth != 16) return null
+    val channels = when (colourType) {
+        0 -> 1
+        2 -> 3
+        3 -> 1
+        4 -> 2
+        6 -> 4
+        else -> return null
+    }
+    if (colourType == 3 && palette == null) return null
+    val bytesPerPixel = channels * (bitDepth / 8)
+    val rowBytes = width * bytesPerPixel
+    val inflater = Inflater()
+    inflater.setInput(idat.toByteArray())
+    val raw = ByteArray(height * (1 + rowBytes))
+    var produced = 0
+    try {
+        while (!inflater.finished() && produced < raw.size) {
+            val n = inflater.inflate(raw, produced, raw.size - produced)
+            if (n == 0) break
+            produced += n
+        }
+    } catch (e: Exception) {
+        return null
+    } finally {
+        inflater.end()
+    }
+    if (produced < raw.size) return null
+    val argb = IntArray(width * height)
+    var prevRow = ByteArray(rowBytes)
+    for (y in 0 until height) {
+        val filter = raw[y * (1 + rowBytes)].toInt() and 0xFF
+        val row = raw.copyOfRange(y * (1 + rowBytes) + 1, (y + 1) * (1 + rowBytes))
+        for (i in row.indices) {
+            val a = if (i >= bytesPerPixel) row[i - bytesPerPixel].toInt() and 0xFF else 0
+            val b = prevRow[i].toInt() and 0xFF
+            val c = if (i >= bytesPerPixel) prevRow[i - bytesPerPixel].toInt() and 0xFF else 0
+            val v = row[i].toInt() and 0xFF
+            val recon = when (filter) {
+                0 -> v
+                1 -> v + a
+                2 -> v + b
+                3 -> v + (a + b) / 2
+                4 -> v + paeth(a, b, c)
+                else -> return null
+            }
+            row[i] = (recon and 0xFF).toByte()
+        }
+        for (x in 0 until width) {
+            val o = x * bytesPerPixel
+            fun sample(ch: Int): Int =
+                if (bitDepth == 16) row[o + ch * 2].toInt() and 0xFF else row[o + ch].toInt() and 0xFF
+            val r: Int
+            val g: Int
+            val b: Int
+            val a: Int
+            when (colourType) {
+                0 -> {
+                    val v = sample(0)
+                    r = v; g = v; b = v; a = 255
+                }
+                2 -> {
+                    r = sample(0); g = sample(1); b = sample(2); a = 255
+                }
+                3 -> {
+                    val idx = sample(0) * 3
+                    val pal = palette!!
+                    if (idx + 2 >= pal.size) return null
+                    r = pal[idx].toInt() and 0xFF
+                    g = pal[idx + 1].toInt() and 0xFF
+                    b = pal[idx + 2].toInt() and 0xFF
+                    a = 255
+                }
+                4 -> {
+                    val v = sample(0)
+                    r = v; g = v; b = v; a = sample(1)
+                }
+                else -> {
+                    r = sample(0); g = sample(1); b = sample(2); a = sample(3)
+                }
+            }
+            argb[y * width + x] = (a shl 24) or (r shl 16) or (g shl 8) or b
+        }
+        prevRow = row
+    }
+    return DecodedPng(width, height, argb)
+}
+
+/** Pixel access over an output image: minimal PNG decode when possible, else [DusrelImage.pickColour] per pixel. */
 private class Pixels(private val data: ByteArray, private val caseId: String) {
-    private val image: BufferedImage? = try {
-        ImageIO.read(ByteArrayInputStream(data))
+    private val image: DecodedPng? = try {
+        decodePng(data)
     } catch (e: Exception) {
         null
     }
@@ -639,15 +781,15 @@ private class Pixels(private val data: ByteArray, private val caseId: String) {
     fun pixel(x: Int, y: Int): IntArray {
         val img = image
         if (img != null) {
-            val argb = img.getRGB(x, y)
+            val argb = img.argb[y * img.width + x]
             return intArrayOf((argb shr 16) and 0xFF, (argb shr 8) and 0xFF, argb and 0xFF, (argb ushr 24) and 0xFF)
         }
         val col = DusrelImage.pickColour(data, x.toUInt(), y.toUInt())
         return intArrayOf(col.r.toInt(), col.g.toInt(), col.b.toInt(), col.a.toInt())
     }
 
-    private fun requireImage(): BufferedImage = image
-        ?: throw IllegalStateException("case $caseId: region check needs a decodable (PNG/JPEG/BMP/GIF) output")
+    private fun requireImage(): DecodedPng = image
+        ?: throw IllegalStateException("case $caseId: region check needs a decodable (PNG) output")
 
     fun regionHasDark(x0: Int, y0: Int, x1: Int, y1: Int): Boolean {
         requireImage()
