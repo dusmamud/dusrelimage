@@ -434,7 +434,7 @@ public enum DusrelImage {
 public extension DusrelError {
 
     /// Stable, machine-readable code, e.g. `"INVALID_IMAGE"`.
-    var code: String {
+    public var code: String {
         switch self {
         case let .InvalidImage(code, _, _): return code
         case let .UnsupportedFormat(code, _, _): return code
@@ -451,7 +451,7 @@ public extension DusrelError {
     }
 
     /// English message from the Rust core.
-    var messageEn: String {
+    public var messageEn: String {
         switch self {
         case let .InvalidImage(_, messageEn, _): return messageEn
         case let .UnsupportedFormat(_, messageEn, _): return messageEn
@@ -468,7 +468,7 @@ public extension DusrelError {
     }
 
     /// Hindi message from the Rust core.
-    var messageHi: String {
+    public var messageHi: String {
         switch self {
         case let .InvalidImage(_, _, messageHi): return messageHi
         case let .UnsupportedFormat(_, _, messageHi): return messageHi
@@ -485,10 +485,10 @@ public extension DusrelError {
     }
 
     /// Alias of `messageEn` (matches the JS/Python wrappers).
-    var reasonEn: String { messageEn }
+    public var reasonEn: String { messageEn }
 
     /// Alias of `messageHi`.
-    var reasonHi: String { messageHi }
+    public var reasonHi: String { messageHi }
 
     /// Build the enum case for a stable code string (used for bulk
     /// per-item errors, which arrive as flat code + messages). An

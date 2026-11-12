@@ -56,7 +56,7 @@ final class VectorsTest extends TestCase
         if (self::$cases !== []) {
             return self::$cases;
         }
-        $path = __DIR__ . '/../../shared/test-vectors.json';
+        $path = __DIR__ . '/../../../shared/test-vectors.json';
         if (!is_file($path)) {
             throw new \RuntimeException("shared/test-vectors.json not found at {$path}");
         }

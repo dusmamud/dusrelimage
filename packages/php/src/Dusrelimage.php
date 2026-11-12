@@ -260,7 +260,7 @@ final class Dusrelimage
         foreach ($inputs as $i => $bytes) {
             [$buf, $len] = $this->inputBuffer($bytes);
             $bufs[] = $buf;
-            $ptrs[$i] = \FFI::addr($buf);
+            $ptrs[$i] = \FFI::addr($buf[0]);
             $lens[$i] = $len;
         }
         return [$ptrs, $lens, $bufs, $count];
@@ -437,11 +437,11 @@ final class Dusrelimage
         [$buf, $len] = $this->inputBuffer($bytes);
         [$out, $outLen] = $this->outParams();
         $status = $this->ffi->dusrelimage_compress(
-            \FFI::addr($buf),
+            \FFI::addr($buf[0]),
             $len,
             self::optionsJson(self::compressOptions($options)),
-            $out,
-            $outLen,
+            \FFI::addr($out[0]),
+            \FFI::addr($outLen[0]),
         );
         return $this->finish($status, $out, $outLen);
     }
@@ -460,12 +460,12 @@ final class Dusrelimage
         [$buf, $len] = $this->inputBuffer($bytes);
         [$out, $outLen] = $this->outParams();
         $status = $this->ffi->dusrelimage_compress_to_size(
-            \FFI::addr($buf),
+            \FFI::addr($buf[0]),
             $len,
             $target,
             self::optionsJson(self::compressOptions($options)),
-            $out,
-            $outLen,
+            \FFI::addr($out[0]),
+            \FFI::addr($outLen[0]),
         );
         return $this->finish($status, $out, $outLen);
     }
@@ -477,11 +477,11 @@ final class Dusrelimage
         [$buf, $len] = $this->inputBuffer($bytes);
         [$out, $outLen] = $this->outParams();
         $status = $this->ffi->dusrelimage_resize(
-            \FFI::addr($buf),
+            \FFI::addr($buf[0]),
             $len,
             self::optionsJson(self::resizeOptions($options)),
-            $out,
-            $outLen,
+            \FFI::addr($out[0]),
+            \FFI::addr($outLen[0]),
         );
         return $this->finish($status, $out, $outLen);
     }
@@ -493,11 +493,11 @@ final class Dusrelimage
         [$buf, $len] = $this->inputBuffer($bytes);
         [$out, $outLen] = $this->outParams();
         $status = $this->ffi->dusrelimage_crop(
-            \FFI::addr($buf),
+            \FFI::addr($buf[0]),
             $len,
             self::optionsJson(self::cropOptions($options)),
-            $out,
-            $outLen,
+            \FFI::addr($out[0]),
+            \FFI::addr($outLen[0]),
         );
         return $this->finish($status, $out, $outLen);
     }
@@ -509,11 +509,11 @@ final class Dusrelimage
         [$buf, $len] = $this->inputBuffer($bytes);
         [$out, $outLen] = $this->outParams();
         $status = $this->ffi->dusrelimage_convert(
-            \FFI::addr($buf),
+            \FFI::addr($buf[0]),
             $len,
             self::optionsJson(self::convertOptions($options)),
-            $out,
-            $outLen,
+            \FFI::addr($out[0]),
+            \FFI::addr($outLen[0]),
         );
         return $this->finish($status, $out, $outLen);
     }
@@ -530,11 +530,11 @@ final class Dusrelimage
         [$buf, $len] = $this->inputBuffer($bytes);
         [$out, $outLen] = $this->outParams();
         $status = $this->ffi->dusrelimage_add_watermark(
-            \FFI::addr($buf),
+            \FFI::addr($buf[0]),
             $len,
             self::optionsJson(self::watermarkOptions($options)),
-            $out,
-            $outLen,
+            \FFI::addr($out[0]),
+            \FFI::addr($outLen[0]),
         );
         return $this->finish($status, $out, $outLen);
     }
@@ -556,11 +556,11 @@ final class Dusrelimage
         [$buf, $len] = $this->inputBuffer($bytes);
         [$out, $outLen] = $this->outParams();
         $status = $this->ffi->dusrelimage_annotate(
-            \FFI::addr($buf),
+            \FFI::addr($buf[0]),
             $len,
             self::optionsJson($parsed),
-            $out,
-            $outLen,
+            \FFI::addr($out[0]),
+            \FFI::addr($outLen[0]),
         );
         return $this->finish($status, $out, $outLen);
     }
@@ -579,12 +579,12 @@ final class Dusrelimage
         [$buf, $len] = $this->inputBuffer($bytes);
         [$out, $outLen] = $this->outParams();
         $status = $this->ffi->dusrelimage_pick_colour(
-            \FFI::addr($buf),
+            \FFI::addr($buf[0]),
             $len,
             $px,
             $py,
-            $out,
-            $outLen,
+            \FFI::addr($out[0]),
+            \FFI::addr($outLen[0]),
         );
         $json = $this->finish($status, $out, $outLen);
         return self::normalizeColour(self::decodeJson($json, 'pick_colour'));
@@ -607,11 +607,11 @@ final class Dusrelimage
         [$buf, $len] = $this->inputBuffer($bytes);
         [$out, $outLen] = $this->outParams();
         $status = $this->ffi->dusrelimage_extract_palette(
-            \FFI::addr($buf),
+            \FFI::addr($buf[0]),
             $len,
             $count,
-            $out,
-            $outLen,
+            \FFI::addr($out[0]),
+            \FFI::addr($outLen[0]),
         );
         $json = $this->finish($status, $out, $outLen);
         $decoded = self::decodeJson($json, 'extract_palette');
@@ -625,12 +625,12 @@ final class Dusrelimage
         [$ptrs, $lens, $keepAlive, $count] = $this->inputArray($bufs);
         [$out, $outLen] = $this->outParams();
         $status = $this->ffi->dusrelimage_make_collage(
-            $ptrs,
-            $lens,
+            \FFI::addr($ptrs[0]),
+            \FFI::addr($lens[0]),
             $count,
             self::optionsJson(self::collageOptions($options)),
-            $out,
-            $outLen,
+            \FFI::addr($out[0]),
+            \FFI::addr($outLen[0]),
         );
         return $this->finish($status, $out, $outLen);
     }
@@ -642,11 +642,11 @@ final class Dusrelimage
         [$buf, $len] = $this->inputBuffer($bytes);
         [$out, $outLen] = $this->outParams();
         $status = $this->ffi->dusrelimage_pixelate(
-            \FFI::addr($buf),
+            \FFI::addr($buf[0]),
             $len,
             self::optionsJson(self::pixelateOptions($options)),
-            $out,
-            $outLen,
+            \FFI::addr($out[0]),
+            \FFI::addr($outLen[0]),
         );
         return $this->finish($status, $out, $outLen);
     }
@@ -669,11 +669,11 @@ final class Dusrelimage
         [$buf, $len] = $this->inputBuffer($bytes);
         [$out, $outLen] = $this->outParams();
         $status = $this->ffi->dusrelimage_get_image_info(
-            \FFI::addr($buf),
+            \FFI::addr($buf[0]),
             $len,
             self::optionsJson(self::commonOptions($options)),
-            $out,
-            $outLen,
+            \FFI::addr($out[0]),
+            \FFI::addr($outLen[0]),
         );
         $json = $this->finish($status, $out, $outLen);
         $info = self::decodeJson($json, 'get_image_info');
@@ -719,13 +719,13 @@ final class Dusrelimage
         [$ptrs, $lens, $keepAlive, $count] = $this->inputArray($bufs);
         [$out, $outLen] = $this->outParams();
         $status = $this->ffi->dusrelimage_bulk_process(
-            $ptrs,
-            $lens,
+            \FFI::addr($ptrs[0]),
+            \FFI::addr($lens[0]),
             $count,
             $canonicalOp,
             self::optionsJson($translated),
-            $out,
-            $outLen,
+            \FFI::addr($out[0]),
+            \FFI::addr($outLen[0]),
         );
         $json = $this->finish($status, $out, $outLen);
         return self::normalizeBulkResults(self::decodeJson($json, 'bulk_process'));
