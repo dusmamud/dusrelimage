@@ -1,0 +1,32 @@
+name: Release
+
+# Manual only — it never runs on push, so it can never turn CI red by itself.
+# Publishes to crates.io via Trusted Publishing (GitHub OIDC): no long-lived
+# CARGO_REGISTRY_TOKEN secret is needed. release-plz exchanges the OIDC
+# token for a short-lived registry token itself. The trusted publisher must
+# be configured once on crates.io (crate Settings > Trusted Publishing):
+# GitHub repo dusmamud/dusrelimage, workflow file release.yml, no environment.
+# Keep the API token out of this workflow — do not re-add CARGO_REGISTRY_TOKEN.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  id-token: write
+
+jobs:
+  release-plz:
+    name: release-plz (crates.io only)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Run release-plz
+        uses: release-plz/action@v0.5
+        with:
+          command: release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

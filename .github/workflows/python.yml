@@ -1,0 +1,56 @@
+name: Python wheel
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  wheel:
+    name: maturin build + import test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: install maturin
+        run: python -m pip install --upgrade pip maturin
+      - name: build wheel
+        working-directory: crates/dusrelimage-py
+        run: python -m maturin build --release
+      - name: install wheel and smoke test
+        run: |
+          python -m venv /tmp/wheel-venv
+          # maturin uses the workspace target dir, so the wheel lands at
+          # the repo-root target/wheels/, not under crates/dusrelimage-py/
+          # Install with the [pydantic] extra: the smoke test imports
+          # dusrelimage.pydantic, which raises ImportError without it.
+          WHEEL=$(echo target/wheels/*.whl)
+          /tmp/wheel-venv/bin/pip install "$WHEEL[pydantic]"
+          /tmp/wheel-venv/bin/python -c "
+          import dusrelimage as di
+          img = di.make_test_image('noise', 400, 300, 7)
+          info = di.get_image_info(img)
+          assert info['format'] == 'png' and info['width'] == 400 and info['height'] == 300
+          out = di.compress_image(img, {'format': 'jpeg', 'quality': 80})
+          assert di.get_image_info(out)['format'] == 'jpeg'
+          small = di.compress_to_size(img, 200_000, {'format': 'jpeg', 'quality': 90})
+          assert len(small) <= 200_000
+          resized = di.resize_image(img, {'percent': 50.0})
+          assert di.get_image_info(resized)['width'] == 200
+          colour = di.pick_colour(di.make_test_image('solid', 64, 48, 1), 5, 5)
+          assert colour['hex'].startswith('#')
+          palette = di.extract_palette(di.make_test_image('solid', 50, 50, 1), 4)
+          assert len(palette) == 1 and abs(palette[0]['share'] - 1.0) < 0.001
+          import dusrelimage.pydantic as m
+          assert m.CompressOptions(quality=80).quality == 80
+          print('wheel smoke test OK')
+          "
+      - name: pytest on the wheel
+        run: |
+          /tmp/wheel-venv/bin/pip install pytest
+          /tmp/wheel-venv/bin/python -m pytest crates/dusrelimage-py/tests -q

@@ -1,0 +1,72 @@
+---
+title: Changelog
+description: dusrelimage release history — v0.1.0, 2026-11-12.
+---
+
+## v0.1.0 — 2026-11-12
+
+First release. One Rust core (`dusrelimage`), with JavaScript/TypeScript
+(WASM), Python (PyO3) and CLI bindings in lockstep. MIT licence. Fully
+offline — no network, no uploads.
+
+### The 10 tools
+
+- **Compress** — `compress_image` (quality 1–100, format override,
+  progressive, lossless WebP/PNG, WebP effort) and `compress_to_size`
+  (iterative binary search on quality, max 10 steps, fails with
+  `TARGET_SIZE_UNREACHABLE` when even the lowest quality exceeds the
+  target).
+- **Resize** — `resize_image` with width / height / percent, aspect
+  lock, fit modes `Fit | Fill | Stretch | Crop`, filters `Nearest |
+  Triangle | CatmullRom | Gaussian | Lanczos3` (default Lanczos3).
+- **Crop** — `crop_image` with x/y/width/height plus anchor presets
+  `Center | TopLeft | TopRight | BottomLeft | BottomRight`;
+  out-of-bounds fails with `CROP_OUT_OF_BOUNDS`, never silently clips.
+- **Convert** — `convert_image` across `Jpeg, Png, WebP, Avif, Gif,
+  Bmp`, with quality, alpha-flattening `background` (default white) and
+  progressive output.
+- **Watermark** — `add_watermark` with text (size, colour, opacity,
+  rotation) or a logo image (scale, opacity, margin), 9 anchors plus
+  `Tiled`.
+- **Annotate** — `annotate_image` with `Arrow`, `Rect`, `Ellipse`,
+  `Line` and `Text` ops in absolute pixels, drawn in raster in the core.
+- **Colour picker** — `pick_colour` returns `Colour { hex, r, g, b, a,
+  hsl }`; out-of-bounds fails with `PIXEL_OUT_OF_BOUNDS`.
+- **Palette** — `extract_palette` (median-cut quantisation, count 1–16,
+  most frequent first, hex + share 0–1 per colour).
+- **Collage** — `make_collage` with grid layouts `1x1`–`4x4` plus
+  `grid` / `row` / `column`, cell gap, background colour, output size
+  and per-cell fit. (`masonry` is out of scope for v0.1.0.)
+- **Pixelate** — `pixelate_image` over a rectangle with block size
+  2–100 px (downscale-Nearest + upscale-Nearest of the rect only).
+
+### Helpers and control layer
+
+- `get_image_info` — format, width, height, alpha, colour type, file size.
+- `bulk_process` — one call, one result per input, same order; partial
+  failures are reported per item and never abort the batch.
+- `CommonOptions` on every operation: `auto_orient` (default true),
+  `keep_exif` (default false), `dpi`, `max_pixels` (default
+  120,000,000), `max_dimension` (default 16000).
+- 11 stable error codes, each with `message_en` and `message_hi` — see
+  [Error codes](/guides/error-codes/).
+- CLI `dusrelimage` with `compress, resize, crop, convert, watermark,
+  annotate, pick-colour, palette, collage, pixelate, info, mock`.
+- Docs website (Astro + Starlight) with a WASM playground at
+  <https://dusrelimage.pages.dev>.
+
+### Known limits (v0.1.0)
+
+- SPEC deviation: the SPEC §2 PNG `palette` quantise flag is NOT
+  implemented in v0.1.0 — PNG `quality` maps to a compression level
+  only (≥67 `Best`, 34–66 `Default`, else `Fast`).
+- No HEIC support (libheif + licence).
+- AVIF encode is lossy-only / 8-bit (underlying crate limit).
+- GIF encode is first-frame only for animated input.
+- Whole image in memory, no streaming.
+- Text drawing uses the bundled DejaVu Sans font.
+
+### Not in v0.1.0 (planned)
+
+- **v0.2.x:** Go via C API, napi-rs native Node package, PHP FFI wrapper.
+- **v0.3.x:** UniFFI Kotlin/Swift (Android/iOS).

@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dusrelimage"
+version = "0.1.0"
+description = "Offline image toolkit — compress, resize, crop, convert, watermark, annotate, colour picker, palette, collage and pixelate. One Rust core, no network, no uploads."
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "dusmamud" }]
+requires-python = ">=3.10"
+dependencies = []
+
+[project.optional-dependencies]
+pydantic = ["pydantic>=2"]
+dev = ["pytest>=8"]
+
+[project.urls]
+Homepage = "https://github.com/dusmamud/dusrelimage"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

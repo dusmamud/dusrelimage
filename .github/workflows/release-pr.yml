@@ -1,0 +1,78 @@
+name: Release PR
+# Release flow:
+#  - On every push to main, `release-plz update` bumps the Cargo workspace
+#    version from conventional commits (feat -> minor, fix -> patch,
+#    chore/docs -> no bump) and updates CHANGELOG.md, and the job opens
+#    (or updates) a `release-plz` PR with all of it.
+#  - Merging that PR does NOT publish by itself. Publish with a manual
+#    dispatch of the `Release` workflow (release.yml) — it is the only
+#    workflow the crates.io Trusted Publishing config allows (crate
+#    Settings > Trusted Publishing: workflow file release.yml). Do NOT
+#    add a release job here: its OIDC JWT would name release-pr.yml and
+#    crates.io would reject it.
+#  - npm and PyPI are NOT auto-published: npm needs a manual npm.yml
+#    dispatch, PyPI needs a manual pypi.yml dispatch. Those stay manual
+#    on purpose.
+#  - NOTE: scripts/sync-versions.sh (mirroring indycheck) runs after
+#    `release-plz update` below, so the JS/Python/website versions stay
+#    in lockstep with the Cargo workspace version.
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-pr:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+      - name: Install release-plz
+        # NOTE: release-plz/action only accepts `release-pr` or `release`
+        # as its `command` — `update` is silently ignored (the action runs
+        # neither), which is why the first version of this workflow in
+        # indycheck opened no PR at all. Install the CLI directly and run
+        # `update` ourselves. Pinned to 0.4.3: 0.4.2 has a changelog-template
+        # regression that breaks `release-plz update`.
+        uses: taiki-e/install-action@1919c4a95903d2c33e4a221102edca87309fc14b
+        with:
+          tool: release-plz@0.4.3
+      - name: Update versions and changelog
+        run: release-plz update
+      - name: Sync JS / Python / website versions
+        # Keep packages/js, crates/dusrelimage-py, packages/python and
+        # website/package.json (+ astro.config.mjs softwareVersion) in
+        # lockstep with the bumped Cargo workspace version.
+        run: bash scripts/sync-versions.sh
+      - name: Refresh Cargo.lock
+        run: cargo check -p dusrelimage
+      - name: Open or update the release PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if git diff --quiet; then
+            echo "nothing to release"
+            exit 0
+          fi
+          version=$(grep -m1 '^version =' Cargo.toml | sed -E 's/version = "(.*)"/\1/')
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -B release-plz
+          git add -A
+          git commit -m "chore: Release package dusrelimage version $version"
+          git push --force-with-lease origin release-plz
+          if gh pr list --head release-plz --json number --jq '.[0].number' | grep -q .; then
+            echo "release PR already open, branch updated"
+          else
+            gh pr create --base main --head release-plz \
+              --title "chore: Release package dusrelimage version $version" \
+              --body "Release PR (release-plz). After merging, publish dusrelimage $version to crates.io by manually dispatching the Release workflow (release.yml); it creates the GitHub release too. npm and PyPI still need their manual steps."
+          fi

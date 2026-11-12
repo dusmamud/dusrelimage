@@ -1,0 +1,68 @@
+---
+title: Crop
+description: Cut a rectangle out of an image, by coordinates or by anchor preset.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Cut a rectangle out of an image — by exact coordinates, or by an anchor
+preset.
+
+## Function
+
+```rust
+crop_image(input, &CropOptions) -> Vec<u8>
+```
+
+| Language | Name |
+| --- | --- |
+| Rust | `crop_image` |
+| JavaScript | `cropImage` |
+| Python | `crop_image` |
+| CLI | `dusrelimage crop <input> --x 100 --y 50 --width 400 --height 300 -o out.jpg` |
+
+## Options
+
+| Field | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `x`, `y` | u32 | `0` | Top-left corner of the crop rectangle, in pixels. |
+| `width`, `height` | u32 | required | Size of the crop rectangle. |
+| `anchor` | Anchor or null | `null` | Preset instead of x/y: `Center`, `TopLeft`, `TopRight`, `BottomLeft`, `BottomRight`. |
+
+With an anchor preset, give only `width` and `height` — the position is
+computed from the image size. `Center` crops the middle; the corner
+presets crop from that corner.
+
+## Examples
+
+```js
+import { cropImage } from 'dusrelimage';
+
+// Exact rectangle
+const out = cropImage(input, { x: 100, y: 50, width: 400, height: 300 });
+
+// Centre square, whatever the input size
+const square = cropImage(input, { width: 500, height: 500, anchor: 'Center' });
+```
+
+```bash
+dusrelimage crop photo.jpg --x 100 --y 50 --width 400 --height 300 -o cropped.jpg
+dusrelimage crop photo.jpg --width 500 --height 500 --anchor center -o square.jpg
+```
+
+<Aside type="caution" title="No silent clipping">
+  A rectangle that sticks out of the image fails with
+  `CROP_OUT_OF_BOUNDS` — cropping never silently clips to the edge.
+  Check the size first with [`get_image_info`](/reference/info-and-bulk/)
+  if the coordinates come from user input.
+</Aside>
+
+## Errors
+
+| Code | When |
+| --- | --- |
+| `INVALID_IMAGE` | Input is not a decodable image. |
+| `CROP_OUT_OF_BOUNDS` | The rectangle is outside the image. |
+| `INVALID_DIMENSIONS` | Width or height is zero. |
+| `IMAGE_TOO_LARGE` | Over `max_pixels` (default 120,000,000). |
+| `EMPTY_INPUT` | Empty input bytes. |

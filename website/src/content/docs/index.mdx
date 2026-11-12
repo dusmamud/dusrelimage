@@ -1,0 +1,116 @@
+---
+title: dusrelimage
+description: Offline image toolkit — compress, resize, crop, convert, watermark, annotate, pick colours, extract palettes, build collages and pixelate. One Rust core, zero network calls.
+# The docs home lives at /overview/ (not /) because src/pages/index.astro
+# is the site landing page at /. Without this slug the two routes conflict
+# and the build fails rendering /.
+slug: overview
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+dusrelimage is **one single package** that does the everyday image jobs —
+compress, resize, crop, convert, watermark, annotate, colour picker,
+palette extraction, collage and pixelate — **offline**. No API keys, no
+network calls, no per-file fees, no data leaving your machine. One Rust
+core, with bindings for JavaScript/TypeScript, Python and Rust, plus a CLI.
+
+> These docs are in English for v0.1.0. The error messages in the package
+> itself are bilingual: every error carries both `message_en` and
+> `message_hi`.
+
+## Install
+
+```bash
+# JavaScript / TypeScript
+npm install dusrelimage
+
+# Python
+pip install dusrelimage
+
+# Rust
+cargo add dusrelimage
+```
+
+Requires Node 18+, Python 3.9+, or Rust 1.85+. The Rust core is built on
+the [`image` crate 0.25](https://docs.rs/image/latest/image/) for
+decode/encode, with text drawn via `ab_glyph` and a bundled DejaVu Sans
+font.
+
+## Your first operation
+
+```rust
+// Rust — compress a JPEG to quality 70
+use dusrelimage::{compress_image, CompressOptions};
+
+let input = std::fs::read("photo.jpg")?;
+let out = compress_image(&input, &CompressOptions { quality: 70, ..Default::default() })?;
+std::fs::write("photo-small.jpg", out)?;
+```
+
+```js
+// JavaScript / TypeScript — same operation, same Rust core (WASM).
+// The npm wrapper uses camelCase names (compressImage, resizeImage…);
+// the raw WASM exports keep the Rust snake_case spelling.
+import { compressImage } from 'dusrelimage';
+
+const input = new Uint8Array(await fs.readFile('photo.jpg'));
+const out = compressImage(input, { quality: 70 }); // Uint8Array out
+```
+
+```python
+# Python — same operation, same Rust core
+from dusrelimage import compress_image
+
+with open("photo.jpg", "rb") as f:
+    data = f.read()
+out = compress_image(data, quality=70)  # bytes out
+```
+
+## The 10 tools
+
+| Tool | What it does | Rust function |
+| --- | --- | --- |
+| Compress | Shrink file size at a quality, or hit an exact target size | `compress_image`, `compress_to_size` |
+| Resize | New width / height / percent, with fit modes and filters | `resize_image` |
+| Crop | Cut a rectangle, or an anchor preset | `crop_image` |
+| Convert | Change format (JPEG, PNG, WebP, AVIF, GIF, BMP) | `convert_image` |
+| Watermark | Text or logo stamp, 9 anchors + tiled, rotation, opacity | `add_watermark` |
+| Annotate | Arrows, rectangles, ellipses, lines and text, drawn in raster | `annotate_image` |
+| Colour picker | The exact colour of one pixel, as hex + RGB + HSL | `pick_colour` |
+| Palette | Dominant colours, most frequent first | `extract_palette` |
+| Collage | Several images into one grid / row / column | `make_collage` |
+| Pixelate | Mosaic-blur a rectangle with a block size | `pixelate_image` |
+
+Plus two helpers that go with them: `get_image_info` (format, dimensions,
+alpha, colour type, file size) and `bulk_process` (many inputs in one call,
+one bad input never kills the whole batch).
+
+## How it works
+
+Every operation takes **bytes in and returns bytes out**. There is no
+streaming mode and no temp files: the whole image lives in memory, the
+operation runs, and you get the result back as bytes. That makes the API
+the same in every language — read a file, call the function, write the
+result.
+
+Errors never panic on bad input. Every failure returns a stable,
+machine-readable error code (`INVALID_IMAGE`, `CROP_OUT_OF_BOUNDS`, …)
+plus a message in English and Hindi. See [Error codes](/guides/error-codes/).
+
+<Aside type="caution" title="Honest limits — read this first">
+  v0.1.0 has **no HEIC support** (libheif + licence), AVIF input does
+  not decode (`UNSUPPORTED_FORMAT` — AVIF is encode-only), AVIF encode
+  is lossy-only / 8-bit, and GIF encode is **first-frame only** for
+  animated input. The whole image lives in memory; there is no
+  streaming mode.
+  Images larger than 120,000,000 pixels are refused with
+  `IMAGE_TOO_LARGE`. Full list is on each tool page and in the
+  [changelog](/changelog/).
+</Aside>
+
+## Try it in your browser
+
+The [playground](/playground/) runs the real Rust core compiled to
+WebAssembly. Pick a local image, run a tool, download the result —
+**your files never leave the browser**.

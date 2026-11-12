@@ -1,0 +1,40 @@
+name: WASM
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  wasm:
+    name: wasm-pack build + test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+      - name: install wasm-pack
+        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+      - name: build (web)
+        run: wasm-pack build --target web crates/dusrelimage-wasm
+      - name: build (bundler)
+        run: wasm-pack build --target bundler crates/dusrelimage-wasm
+      - name: check wasm exports
+        run: |
+          grep -q "compress_image" crates/dusrelimage-wasm/pkg/dusrelimage_wasm.d.ts
+          grep -q "compress_to_size" crates/dusrelimage-wasm/pkg/dusrelimage_wasm.d.ts
+          grep -q "resize_image" crates/dusrelimage-wasm/pkg/dusrelimage_wasm.d.ts
+          grep -q "crop_image" crates/dusrelimage-wasm/pkg/dusrelimage_wasm.d.ts
+          grep -q "convert_image" crates/dusrelimage-wasm/pkg/dusrelimage_wasm.d.ts
+          grep -q "add_watermark" crates/dusrelimage-wasm/pkg/dusrelimage_wasm.d.ts
+          grep -q "annotate_image" crates/dusrelimage-wasm/pkg/dusrelimage_wasm.d.ts
+          grep -q "pick_colour" crates/dusrelimage-wasm/pkg/dusrelimage_wasm.d.ts
+          grep -q "extract_palette" crates/dusrelimage-wasm/pkg/dusrelimage_wasm.d.ts
+          grep -q "make_collage" crates/dusrelimage-wasm/pkg/dusrelimage_wasm.d.ts
+          grep -q "pixelate_image" crates/dusrelimage-wasm/pkg/dusrelimage_wasm.d.ts
+          grep -q "get_image_info" crates/dusrelimage-wasm/pkg/dusrelimage_wasm.d.ts
+          grep -q "bulk_process" crates/dusrelimage-wasm/pkg/dusrelimage_wasm.d.ts
+          ls -lh crates/dusrelimage-wasm/pkg/*.wasm

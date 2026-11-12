@@ -1,0 +1,76 @@
+---
+title: Convert
+description: Change an image's format — JPEG, PNG, WebP, AVIF, GIF or BMP — with quality and alpha flattening.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Change an image's format. Transparency is flattened onto a background
+colour when the target format has no alpha channel.
+
+## Function
+
+```rust
+convert_image(input, &ConvertOptions) -> Vec<u8>
+```
+
+| Language | Name |
+| --- | --- |
+| Rust | `convert_image` |
+| JavaScript | `convertImage` |
+| Python | `convert_image` |
+| CLI | `dusrelimage convert <input> --format webp -o out.webp` |
+
+## Options
+
+| Field | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `format` | ImageFormat | required | `Jpeg`, `Png`, `WebP`, `Avif`, `Gif`, `Bmp`. |
+| `quality` | u8 | `80` | Quality 1–100 for lossy targets. |
+| `background` | Colour | white | Colour used to flatten transparency when the target has no alpha (JPEG, BMP). |
+| `progressive` | bool | `false` | Progressive JPEG / interlaced PNG output. |
+
+## Formats
+
+| | Decode (in) | Encode (out) |
+| --- | --- | --- |
+| Supported | JPEG, PNG, WebP, GIF, BMP, TIFF | JPEG, PNG, WebP, AVIF, GIF, BMP |
+| Not supported | HEIC, AVIF (input) | HEIC, TIFF |
+
+## Examples
+
+```js
+import { convertImage } from 'dusrelimage';
+
+const webp = convertImage(input, { format: 'WebP', quality: 80 });
+const jpg = convertImage(pngWithAlpha, { format: 'Jpeg', background: '#ffffff' });
+```
+
+```python
+from dusrelimage import convert_image
+
+avif = convert_image(data, format="avif", quality=60)
+```
+
+```bash
+dusrelimage convert photo.png --format webp --quality 80 -o photo.webp
+dusrelimage convert logo.png --format jpeg --background "#000000" -o logo.jpg
+```
+
+<Aside type="caution" title="v0.1.0 limits">
+  AVIF is **encode-only**: AVIF input does not decode
+  (`UNSUPPORTED_FORMAT`). AVIF encode is lossy-only / 8-bit
+  (underlying crate limit). GIF encode is **first-frame only** for
+  animated input — animation is dropped, not preserved. There is no
+  HEIC support.
+</Aside>
+
+## Errors
+
+| Code | When |
+| --- | --- |
+| `INVALID_IMAGE` | Input is not a decodable image. |
+| `UNSUPPORTED_FORMAT` | Input format cannot be decoded, or the target cannot be encoded (e.g. HEIC). |
+| `INVALID_QUALITY` | Quality outside 1–100. |
+| `IMAGE_TOO_LARGE` | Over `max_pixels` (default 120,000,000). |
+| `EMPTY_INPUT` | Empty input bytes. |

@@ -1,0 +1,98 @@
+---
+title: Compress
+description: Shrink an image at a chosen quality, or hit an exact target file size with compress_to_size.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Shrink an image's file size — either at a quality you pick, or to an
+exact target size.
+
+## Functions
+
+```rust
+compress_image(input, &CompressOptions) -> Vec<u8>
+compress_to_size(input, target_bytes, &CompressOptions) -> Vec<u8>
+```
+
+| Language | Names |
+| --- | --- |
+| Rust | `compress_image`, `compress_to_size` |
+| JavaScript | `compressImage`, `compressToSize` |
+| Python | `compress_image`, `compress_to_size` |
+| CLI | `dusrelimage compress <input> --quality 70 -o out.jpg` |
+
+## Options
+
+| Field | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `quality` | u8 | `80` | JPEG quality, 1–100. Outside 1–100 → `INVALID_QUALITY`. (WebP output is always lossless, so quality is ignored for WebP.) |
+| `format` | ImageFormat or null | keep input format | Re-encode into another format while compressing. |
+| `progressive` | bool | `false` | JPEG progressive / PNG interlaced output. |
+| `lossless` | bool | `false` | Lossless mode — WebP/PNG only. |
+| `effort` | u8 | `4` | WebP encoding effort, 0–6. Higher is slower and smaller. |
+| PNG only | — | — | PNG `quality` maps to a compression level only: ≥67 `Best`, 34–66 `Default`, else `Fast`. The SPEC §2 PNG `palette` quantise flag is NOT implemented in v0.1.0. |
+
+`CommonOptions` also apply: `auto_orient` (default true), `keep_exif`
+(default false — stripping metadata also shrinks the file), `dpi`,
+`max_pixels`, `max_dimension`. See [Options](/guides/options/).
+
+## compress_to_size — hit an exact target
+
+`compress_to_size` runs an iterative binary search on quality (max 10
+steps) until the output fits in `target_bytes`. If even the lowest
+quality still exceeds the target, it fails with
+`TARGET_SIZE_UNREACHABLE` instead of returning an oversized file —
+the size guarantee is real, not best-effort, for JPEG/AVIF.
+PNG/WebP/GIF/BMP take a single best-effort encode instead — their
+size does not move with quality.
+
+```js
+import { compressToSize } from 'dusrelimage';
+
+// Fits in 200 KB, or throws TARGET_SIZE_UNREACHABLE.
+const out = compressToSize(input, 200 * 1024);
+```
+
+```bash
+# CLI: compress to at most 200 KB
+dusrelimage compress photo.jpg --target-size 204800 -o photo-small.jpg
+```
+
+## Examples
+
+```rust
+use dusrelimage::{compress_image, CompressOptions};
+
+let out = compress_image(&input, &CompressOptions { quality: 70, ..Default::default() })?;
+```
+
+```python
+from dusrelimage import compress_image, convert_image
+
+# Compress AND convert to WebP in one step
+small = compress_image(data, quality=75, format="webp")
+```
+
+<Aside type="tip" title="Picking a quality">
+  Photos: JPEG quality 70–80 is usually indistinguishable from the
+  original at a fraction of the size. Screenshots and line art: PNG
+  (lossless) or WebP lossless. For a hard size cap, always use
+  `compress_to_size` rather than guessing a quality.
+</Aside>
+
+## Errors
+
+| Code | When |
+| --- | --- |
+| `INVALID_IMAGE` | Input is not a decodable image. |
+| `UNSUPPORTED_FORMAT` | Format cannot be encoded to the requested output. |
+| `IMAGE_TOO_LARGE` | Over `max_pixels` (default 120,000,000). |
+| `INVALID_QUALITY` | Quality outside 1–100. |
+| `TARGET_SIZE_UNREACHABLE` | `compress_to_size` only — even lowest quality exceeds the target. |
+| `EMPTY_INPUT` | Empty input bytes. |
+
+## Limits
+
+- AVIF encode is lossy-only / 8-bit. GIF encode is first-frame only for
+  animated input. No HEIC support in v0.1.0.

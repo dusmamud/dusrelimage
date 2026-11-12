@@ -1,0 +1,102 @@
+---
+title: Quickstart
+description: Install dusrelimage and run your first image operation in under a minute — Rust, JavaScript, Python or the CLI.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+## Install
+
+```bash
+# JavaScript / TypeScript
+npm install dusrelimage
+
+# Python
+pip install dusrelimage
+
+# Rust
+cargo add dusrelimage
+
+# CLI (from the repo, until crates.io publish lands)
+cargo install --path crates/dusrelimage-cli
+```
+
+Requires Node 18+, Python 3.9+, or Rust 1.85+. Everything runs offline —
+there is no account, no API key, and no network call at any point.
+
+## Compress a photo (JavaScript)
+
+```js
+import { readFile, writeFile } from 'node:fs/promises';
+import { compressImage } from 'dusrelimage';
+
+const input = new Uint8Array(await readFile('photo.jpg'));
+const out = compressImage(input, { quality: 70 });
+await writeFile('photo-small.jpg', out);
+console.log(` ${input.length} → ${out.length} bytes`);
+```
+
+## Hit an exact target size
+
+```js
+import { compressToSize } from 'dusrelimage';
+
+// Keep shrinking quality (binary search, max 10 steps) until the
+// output fits in 200 KB — or fail with TARGET_SIZE_UNREACHABLE.
+const out = compressToSize(input, 200 * 1024);
+```
+
+## Resize + convert (Python)
+
+```python
+from dusrelimage import resize_image, convert_image
+
+with open("photo.png", "rb") as f:
+    data = f.read()
+
+small = resize_image(data, width=800)          # aspect locked by default
+webp = convert_image(small, format="webp", quality=80)
+
+with open("photo-800.webp", "wb") as f:
+    f.write(webp)
+```
+
+## One command (CLI)
+
+```bash
+dusrelimage compress photo.jpg --quality 70 -o photo-small.jpg
+dusrelimage resize photo.jpg --width 800 -o photo-800.jpg
+dusrelimage info photo.jpg --json
+```
+
+Run `dusrelimage --help` for every subcommand:
+`compress, resize, crop, convert, watermark, annotate, pick-colour,
+palette, collage, pixelate, info, mock`.
+
+## Bytes in, bytes out
+
+Every tool takes image bytes and returns image bytes. No temp files, no
+shared state — steps compose like a pipeline:
+
+```js
+import { resizeImage, addWatermark, compressImage } from 'dusrelimage';
+
+let img = resizeImage(input, { width: 1200 });
+img = addWatermark(img, { text: { text: '© dusrel', size: 36 }, position: 'BottomRight' });
+img = compressImage(img, { quality: 80 });
+```
+
+<Aside type="tip" title="No image handy?">
+  Generate a deterministic test image with the CLI — no download needed:
+  `dusrelimage mock --kind gradient -o test.png`. See
+  [Info & bulk](/reference/info-and-bulk/) for `mock` and `info`.
+</Aside>
+
+## Next steps
+
+- [Options](/guides/options/) — the full pro control layer: quality,
+  fit modes, filters, positions, EXIF handling, size limits.
+- [Error codes](/guides/error-codes/) — what every failure means, in
+  English and Hindi.
+- [Compress](/reference/compress/) — start with the tool pages, one per
+  operation.

@@ -1,0 +1,1 @@
+{"exclude":["src/index.test.ts","src/vectors.test.ts"],"extends":"./tsconfig.json"}

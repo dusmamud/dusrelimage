@@ -1,0 +1,112 @@
+---
+title: Options
+description: The full pro control layer — every dusrelimage operation takes an Options struct. All defaults, ranges and meanings.
+---
+
+Every operation takes an **Options struct**. Pass only what you want to
+change; everything else uses the default below. Option names are
+`snake_case` in Rust and Python, `camelCase` in JavaScript
+(`max_pixels` → `maxPixels`).
+
+## CommonOptions — on every operation
+
+These apply to all 10 tools (and to `get_image_info`).
+
+| Field | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `auto_orient` | bool | `true` | Apply EXIF orientation on load, so a phone photo comes out the way up it was taken. Set `false` to keep the stored orientation. |
+| `keep_exif` | bool | `false` | Keep EXIF / ICC / XMP metadata in the output. Default strips it (smaller files, no location data leaked). v0.1.0: accepted but not honoured — output is always stripped. |
+| `dpi` | `(u32, u32)` or null | `null` | Set output DPI (x, y) on JPEG/PNG where the encoder supports it. v0.1.0: accepted but not embedded yet. |
+| `max_pixels` | u64 | `120_000_000` | Refuse images larger than this many pixels with `IMAGE_TOO_LARGE`. |
+| `max_dimension` | u32 | `16000` | Refuse any side longer than this with `IMAGE_TOO_LARGE`. |
+
+## CompressOptions
+
+| Field | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `quality` | u8 | `80` | JPEG/WebP quality, 1–100. Outside 1–100 → `INVALID_QUALITY`. |
+| `format` | ImageFormat or null | keep input format | Re-encode into another format while compressing. |
+| `progressive` | bool | `false` | JPEG progressive / PNG interlaced output. v0.1.0: accepted but not honoured. |
+| `lossless` | bool | `false` | Lossless mode — WebP/PNG only; ignored (or an error) for lossy-only formats. |
+| `effort` | u8 | `4` | WebP encoding effort, 0–6. Higher is slower and smaller. Outside 0–6 → `INVALID_ARGUMENT`. |
+| PNG only | — | — | PNG maps `quality` to a compression level instead of using it directly: ≥67 `Best`, 34–66 `Default`, else `Fast`. The SPEC §2 PNG `palette` quantise flag is NOT implemented in v0.1.0. |
+
+## ResizeOptions
+
+| Field | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `width` | u32 or null | `null` | Target width in pixels. Give width, height, or `percent` — at least one is required. |
+| `height` | u32 or null | `null` | Target height in pixels. |
+| `percent` | f32 or null | `null` | Scale by percent, e.g. `50` = half size. |
+| `fit` | FitMode | `Fit` | `Fit` (inside the box, keep aspect), `Fill` (fit inside, then centre on a `background` canvas of exactly the target size — letterbox), `Stretch` (ignore aspect), `Crop` (scale to cover the box, then centre-crop to exactly the target size). |
+| `filter` | Filter | `Lanczos3` | Resampling filter: `Nearest`, `Triangle`, `CatmullRom`, `Gaussian`, `Lanczos3`. `Nearest` is fastest and blockiest; `Lanczos3` is sharpest for downscaling photos. |
+| `background` | Colour | white | Fill colour used by `Fill` mode. |
+
+Giving both `width` and `height` with `Fit` keeps the aspect ratio and
+fits inside the box. Giving neither width, height nor percent is
+`INVALID_DIMENSIONS`.
+
+## CropOptions
+
+| Field | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `x`, `y` | u32 | `0` | Top-left corner of the crop rectangle, in pixels. |
+| `width`, `height` | u32 | required | Size of the crop rectangle. |
+| `anchor` | Anchor or null | `null` | Preset instead of x/y: `Center`, `TopLeft`, `TopRight`, `BottomLeft`, `BottomRight`. |
+
+A rectangle that sticks out of the image fails with
+`CROP_OUT_OF_BOUNDS` — cropping never silently clips.
+
+## ConvertOptions
+
+| Field | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `format` | ImageFormat | required | `Jpeg`, `Png`, `WebP`, `Avif`, `Gif`, `Bmp`. |
+| `quality` | u8 | `80` | Quality 1–100 for lossy targets. |
+| `background` | Colour | white | Colour used to flatten transparency when the target format has no alpha channel (JPEG, BMP). |
+| `progressive` | bool | `false` | Progressive JPEG / interlaced PNG output. v0.1.0: accepted but not honoured. |
+
+## WatermarkOptions
+
+| Field | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `text` | TextWatermark or null | `null` | Text stamp: `text` string, `size` (font size), `colour`. Give `text`, `logo`, or both (text is drawn first, then the logo); neither is `INVALID_ARGUMENT`. |
+| `logo` | ImageWatermark or null | `null` | Logo stamp: image bytes, `scale`, `opacity`, `position`, `margin`. |
+| `opacity` | f32 | `0.5` | Overall opacity, 0–1. Outside 0–1 → `INVALID_ARGUMENT`. |
+| `position` | Position | `BottomRight` | 9 anchors (`TopLeft`, `TopCenter`, `TopRight`, `CenterLeft`, `Center`, `CenterRight`, `BottomLeft`, `BottomCenter`, `BottomRight`) or `Tiled` (repeat across the whole image). |
+| `rotation_deg` | f32 | `0` | Rotation in degrees, clockwise. |
+| `margin` | u32 | `16` | Distance from the edge, in pixels. |
+
+## CollageOptions
+
+| Field | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `layout` | CollageLayout | `grid` | `grid` (with a size like `2x2` … `4x4`), `row`, or `column`. `masonry` is out of scope for v0.1.0. |
+| `gap` | u32 | `8` | Gap between cells, in pixels. |
+| `background` | Colour | white | Colour behind the cells and in the gaps. |
+| `width`, `height` | u32 | `1200` | Output canvas size in pixels. |
+| `cell_fit` | FitMode | `Fit` | How each image fits its cell (same modes as resize). |
+
+## PixelateOptions
+
+| Field | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `x`, `y` | u32 | `0` | Top-left of the rectangle to pixelate. |
+| `width`, `height` | u32 | `0` | Size of the rectangle; `0` means "to the image edge", so the default (all zeros) pixelates the whole image. |
+| `block_size` | u32 | `10` | Mosaic block size in pixels, 2–100. Outside 2–100 → `INVALID_ARGUMENT`. |
+
+## Colours
+
+A `Colour` is `{ hex: "#RRGGBB", r, g, b, a, hsl: [h, s, l] }`. In
+options, pass a hex string (`"#ff0000"`) or an `{ r, g, b }` object —
+the bindings normalise it. `hsl` is hue 0–360, saturation and lightness
+0–1.
+
+## Formats
+
+- **Decode (in):** JPEG, PNG, WebP, GIF, BMP, TIFF.
+- **Encode (out):** JPEG, PNG, WebP, AVIF, GIF, BMP.
+- **v0.1.0 limits:** no HEIC; AVIF input does not decode
+  (`UNSUPPORTED_FORMAT`) — AVIF is encode-only; AVIF encode is
+  lossy-only / 8-bit; GIF encode is first-frame only for animated
+  input.

@@ -1,0 +1,2131 @@
+[
+  {
+    "expected": {
+      "colour_type": "rgb8",
+      "format": "png",
+      "has_alpha": false,
+      "height": 48,
+      "width": 64
+    },
+    "fixture": {
+      "height": 48,
+      "kind": "gradient",
+      "seed": 4,
+      "width": 64
+    },
+    "id": "info-png-gradient-64x48",
+    "op": "get_image_info",
+    "options": {}
+  },
+  {
+    "expected": {
+      "format": "jpeg",
+      "has_alpha": false,
+      "height": 80,
+      "width": 100
+    },
+    "fixture": {
+      "derived_from": "compress gradient 100x80 seed 2 to jpeg, quality 80",
+      "kind": "jpeg"
+    },
+    "id": "info-jpeg",
+    "op": "get_image_info",
+    "options": {}
+  },
+  {
+    "expected": {
+      "format": "tiff",
+      "height": 32,
+      "width": 48
+    },
+    "fixture": {
+      "derived_from": "rgb (10,20,30) 48x32 TIFF, written with the image crate",
+      "kind": "tiff"
+    },
+    "id": "info-tiff",
+    "op": "get_image_info",
+    "options": {}
+  },
+  {
+    "expected": {
+      "error": "INVALID_IMAGE"
+    },
+    "fixture": {
+      "derived_from": "ASCII bytes: 'this is not an image at all, just plain text bytes 1234567890'",
+      "kind": "garbage"
+    },
+    "id": "info-garbage-bytes",
+    "op": "get_image_info",
+    "options": {}
+  },
+  {
+    "expected": {
+      "error": "EMPTY_INPUT"
+    },
+    "fixture": {
+      "kind": "empty"
+    },
+    "id": "info-empty-input",
+    "op": "get_image_info",
+    "options": {}
+  },
+  {
+    "expected": {
+      "error": "IMAGE_TOO_LARGE"
+    },
+    "fixture": {
+      "height": 48,
+      "kind": "solid",
+      "seed": 1,
+      "width": 64
+    },
+    "id": "info-too-large-max-dimension",
+    "op": "get_image_info",
+    "options": {
+      "common": {
+        "max_dimension": 10
+      }
+    }
+  },
+  {
+    "expected": {
+      "error": "IMAGE_TOO_LARGE"
+    },
+    "fixture": {
+      "height": 48,
+      "kind": "solid",
+      "seed": 1,
+      "width": 64
+    },
+    "id": "info-too-large-max-pixels",
+    "op": "get_image_info",
+    "options": {
+      "common": {
+        "max_pixels": 100
+      }
+    }
+  },
+  {
+    "expected": {
+      "format": "png",
+      "has_alpha": false,
+      "height": 48,
+      "width": 64
+    },
+    "fixture": {
+      "height": 48,
+      "kind": "solid",
+      "seed": 1,
+      "width": 64
+    },
+    "id": "compress-png-keeps-format-and-dimensions",
+    "op": "compress_image",
+    "options": {}
+  },
+  {
+    "expected": {
+      "format": "jpeg",
+      "height": 80,
+      "width": 100
+    },
+    "fixture": {
+      "height": 80,
+      "kind": "gradient",
+      "seed": 2,
+      "width": 100
+    },
+    "id": "compress-to-jpeg",
+    "op": "compress_image",
+    "options": {
+      "format": "Jpeg",
+      "quality": 80
+    }
+  },
+  {
+    "expected": {
+      "format": "webp",
+      "height": 48,
+      "width": 64
+    },
+    "fixture": {
+      "height": 48,
+      "kind": "gradient",
+      "seed": 4,
+      "width": 64
+    },
+    "id": "compress-to-webp",
+    "notes": "WebP output is always lossless in v0.1.0; quality/effort are ignored for WebP.",
+    "op": "compress_image",
+    "options": {
+      "format": "WebP",
+      "quality": 80
+    }
+  },
+  {
+    "expected": {
+      "error": "INVALID_QUALITY"
+    },
+    "fixture": {
+      "height": 32,
+      "kind": "solid",
+      "seed": 1,
+      "width": 32
+    },
+    "id": "compress-quality-zero",
+    "op": "compress_image",
+    "options": {
+      "quality": 0
+    }
+  },
+  {
+    "expected": {
+      "height": 300,
+      "max_bytes": 200000,
+      "width": 400
+    },
+    "fixture": {
+      "height": 300,
+      "kind": "noise",
+      "seed": 7,
+      "width": 400
+    },
+    "id": "compress-to-size-reaches-target",
+    "op": "compress_to_size",
+    "options": {
+      "format": "Jpeg",
+      "quality": 90
+    },
+    "target_bytes": 200000
+  },
+  {
+    "expected": {
+      "error": "TARGET_SIZE_UNREACHABLE"
+    },
+    "fixture": {
+      "height": 300,
+      "kind": "noise",
+      "seed": 7,
+      "width": 400
+    },
+    "id": "compress-to-size-unreachable-100-bytes",
+    "op": "compress_to_size",
+    "options": {
+      "format": "Jpeg",
+      "quality": 90
+    },
+    "target_bytes": 100
+  },
+  {
+    "expected": {
+      "error": "TARGET_SIZE_UNREACHABLE"
+    },
+    "fixture": {
+      "height": 300,
+      "kind": "noise",
+      "seed": 7,
+      "width": 400
+    },
+    "id": "compress-to-size-unreachable-zero-target",
+    "op": "compress_to_size",
+    "options": {
+      "format": "Jpeg",
+      "quality": 90
+    },
+    "target_bytes": 0
+  },
+  {
+    "expected": {
+      "max_bytes": 100000
+    },
+    "fixture": {
+      "height": 48,
+      "kind": "solid",
+      "seed": 1,
+      "width": 64
+    },
+    "id": "compress-to-size-png-best-effort",
+    "notes": "compress_to_size quality search is JPEG/AVIF-only; PNG is best-effort.",
+    "op": "compress_to_size",
+    "options": {},
+    "target_bytes": 100000
+  },
+  {
+    "expected": {
+      "error": "TARGET_SIZE_UNREACHABLE"
+    },
+    "fixture": {
+      "height": 48,
+      "kind": "solid",
+      "seed": 1,
+      "width": 64
+    },
+    "id": "compress-to-size-png-unreachable",
+    "op": "compress_to_size",
+    "options": {},
+    "target_bytes": 10
+  },
+  {
+    "expected": {
+      "format": "png"
+    },
+    "fixture": {
+      "derived_from": "rgb (10,20,30) 48x32 TIFF, written with the image crate",
+      "kind": "tiff"
+    },
+    "id": "compress-tiff-input-falls-back-to-png",
+    "notes": "TIFF input decodes but has no ImageFormat variant and falls back to PNG output.",
+    "op": "compress_image",
+    "options": {}
+  },
+  {
+    "expected": {
+      "height": 40,
+      "width": 50
+    },
+    "fixture": {
+      "height": 80,
+      "kind": "gradient",
+      "seed": 3,
+      "width": 100
+    },
+    "id": "resize-percent-halves-dimensions",
+    "op": "resize_image",
+    "options": {
+      "percent": 50.0
+    }
+  },
+  {
+    "expected": {
+      "height": 40,
+      "width": 50
+    },
+    "fixture": {
+      "height": 80,
+      "kind": "gradient",
+      "seed": 3,
+      "width": 100
+    },
+    "id": "resize-width-only-keeps-aspect-ratio",
+    "op": "resize_image",
+    "options": {
+      "width": 50
+    }
+  },
+  {
+    "expected": {
+      "height": 40,
+      "pixels": [
+        {
+          "rgba": [
+            255,
+            255,
+            255,
+            255
+          ],
+          "x": 20,
+          "y": 0
+        },
+        {
+          "rgba": [
+            255,
+            255,
+            255,
+            255
+          ],
+          "x": 20,
+          "y": 39
+        }
+      ],
+      "width": 40
+    },
+    "fixture": {
+      "height": 80,
+      "kind": "solid",
+      "seed": 5,
+      "width": 100
+    },
+    "id": "resize-fill-is-exact-with-background-corners",
+    "op": "resize_image",
+    "options": {
+      "fit": "Fill",
+      "height": 40,
+      "width": 40
+    }
+  },
+  {
+    "expected": {
+      "height": 30,
+      "width": 30
+    },
+    "fixture": {
+      "height": 80,
+      "kind": "gradient",
+      "seed": 3,
+      "width": 100
+    },
+    "id": "resize-stretch-is-exact",
+    "op": "resize_image",
+    "options": {
+      "fit": "Stretch",
+      "height": 30,
+      "width": 30
+    }
+  },
+  {
+    "expected": {
+      "height": 30,
+      "width": 30
+    },
+    "fixture": {
+      "height": 80,
+      "kind": "gradient",
+      "seed": 3,
+      "width": 100
+    },
+    "id": "resize-crop-is-exact",
+    "op": "resize_image",
+    "options": {
+      "fit": "Crop",
+      "height": 30,
+      "width": 30
+    }
+  },
+  {
+    "expected": {
+      "error": "INVALID_DIMENSIONS"
+    },
+    "fixture": {
+      "height": 32,
+      "kind": "solid",
+      "seed": 1,
+      "width": 32
+    },
+    "id": "resize-without-size",
+    "op": "resize_image",
+    "options": {}
+  },
+  {
+    "expected": {
+      "error": "INVALID_ARGUMENT"
+    },
+    "fixture": {
+      "height": 32,
+      "kind": "solid",
+      "seed": 1,
+      "width": 32
+    },
+    "id": "resize-percent-with-width",
+    "op": "resize_image",
+    "options": {
+      "percent": 50.0,
+      "width": 16
+    }
+  },
+  {
+    "expected": {
+      "height": 20,
+      "width": 20
+    },
+    "fixture": {
+      "height": 80,
+      "kind": "solid",
+      "seed": 9,
+      "width": 100
+    },
+    "id": "crop-explicit-rect",
+    "op": "crop_image",
+    "options": {
+      "height": 20,
+      "width": 20,
+      "x": 10,
+      "y": 10
+    }
+  },
+  {
+    "expected": {
+      "error": "CROP_OUT_OF_BOUNDS"
+    },
+    "fixture": {
+      "height": 80,
+      "kind": "solid",
+      "seed": 9,
+      "width": 100
+    },
+    "id": "crop-out-of-bounds-right",
+    "op": "crop_image",
+    "options": {
+      "height": 20,
+      "width": 20,
+      "x": 90,
+      "y": 10
+    }
+  },
+  {
+    "expected": {
+      "error": "CROP_OUT_OF_BOUNDS"
+    },
+    "fixture": {
+      "height": 80,
+      "kind": "solid",
+      "seed": 9,
+      "width": 100
+    },
+    "id": "crop-out-of-bounds-bottom",
+    "op": "crop_image",
+    "options": {
+      "height": 20,
+      "width": 20,
+      "x": 0,
+      "y": 70
+    }
+  },
+  {
+    "expected": {
+      "error": "INVALID_DIMENSIONS"
+    },
+    "fixture": {
+      "height": 80,
+      "kind": "solid",
+      "seed": 9,
+      "width": 100
+    },
+    "id": "crop-zero-size",
+    "op": "crop_image",
+    "options": {
+      "height": 20,
+      "width": 0,
+      "x": 0,
+      "y": 0
+    }
+  },
+  {
+    "expected": {
+      "height": 20,
+      "width": 20
+    },
+    "fixture": {
+      "height": 80,
+      "kind": "solid",
+      "seed": 11,
+      "width": 100
+    },
+    "id": "crop-anchor-center",
+    "op": "crop_image",
+    "options": {
+      "anchor": "Center",
+      "height": 20,
+      "width": 20
+    }
+  },
+  {
+    "expected": {
+      "height": 20,
+      "width": 20
+    },
+    "fixture": {
+      "height": 80,
+      "kind": "solid",
+      "seed": 11,
+      "width": 100
+    },
+    "id": "crop-anchor-bottom-right",
+    "op": "crop_image",
+    "options": {
+      "anchor": "BottomRight",
+      "height": 20,
+      "width": 20
+    }
+  },
+  {
+    "expected": {
+      "format": "jpeg",
+      "has_alpha": false,
+      "pixels": [
+        {
+          "rgba_approx": [
+            255,
+            0,
+            0
+          ],
+          "tolerance": 12,
+          "x": 16,
+          "y": 16
+        }
+      ]
+    },
+    "fixture": {
+      "height": 32,
+      "kind": "transparent_rgba",
+      "width": 32
+    },
+    "id": "convert-transparent-png-to-jpeg-flattens-onto-red",
+    "op": "convert_image",
+    "options": {
+      "background": "#FF0000",
+      "format": "Jpeg",
+      "quality": 90
+    }
+  },
+  {
+    "expected": {
+      "format": "png",
+      "height": 48,
+      "width": 64
+    },
+    "fixture": {
+      "height": 48,
+      "kind": "gradient",
+      "seed": 4,
+      "width": 64
+    },
+    "id": "convert-to-png",
+    "op": "convert_image",
+    "options": {
+      "format": "Png"
+    }
+  },
+  {
+    "expected": {
+      "format": "bmp",
+      "height": 48,
+      "width": 64
+    },
+    "fixture": {
+      "height": 48,
+      "kind": "gradient",
+      "seed": 4,
+      "width": 64
+    },
+    "id": "convert-to-bmp",
+    "op": "convert_image",
+    "options": {
+      "format": "Bmp"
+    }
+  },
+  {
+    "expected": {
+      "format": "gif",
+      "height": 48,
+      "width": 64
+    },
+    "fixture": {
+      "height": 48,
+      "kind": "gradient",
+      "seed": 4,
+      "width": 64
+    },
+    "id": "convert-to-gif",
+    "notes": "GIF encode is first-frame only for animated input.",
+    "op": "convert_image",
+    "options": {
+      "format": "Gif"
+    }
+  },
+  {
+    "expected": {
+      "format": "webp",
+      "height": 48,
+      "width": 64
+    },
+    "fixture": {
+      "height": 48,
+      "kind": "gradient",
+      "seed": 4,
+      "width": 64
+    },
+    "id": "convert-to-webp",
+    "op": "convert_image",
+    "options": {
+      "format": "WebP"
+    }
+  },
+  {
+    "expected": {
+      "avif_header": true
+    },
+    "fixture": {
+      "height": 48,
+      "kind": "gradient",
+      "seed": 4,
+      "width": 64
+    },
+    "id": "convert-to-avif",
+    "notes": "AVIF output works (lossy, 8-bit). Bytes 4..12 are 'ftypavif'.",
+    "op": "convert_image",
+    "options": {
+      "format": "Avif",
+      "quality": 80
+    }
+  },
+  {
+    "expected": {
+      "error": "UNSUPPORTED_FORMAT"
+    },
+    "fixture": {
+      "derived_from": "convert gradient 64x48 seed 4 to avif, quality 80",
+      "kind": "avif"
+    },
+    "id": "avif-input-does-not-decode",
+    "notes": "AVIF input does NOT decode in v0.1.0 (no avif-native decoder); AVIF output works.",
+    "op": "get_image_info",
+    "options": {}
+  },
+  {
+    "expected": {
+      "error": "INVALID_QUALITY"
+    },
+    "fixture": {
+      "height": 32,
+      "kind": "solid",
+      "seed": 1,
+      "width": 32
+    },
+    "id": "convert-invalid-quality",
+    "op": "convert_image",
+    "options": {
+      "format": "Png",
+      "quality": 0
+    }
+  },
+  {
+    "expected": {
+      "format": "png",
+      "height": 100,
+      "region_all_white": {
+        "x0": 0,
+        "x1": 60,
+        "y0": 0,
+        "y1": 30
+      },
+      "region_has_dark": {
+        "x0": 100,
+        "x1": 200,
+        "y0": 40,
+        "y1": 100
+      },
+      "width": 200
+    },
+    "fixture": {
+      "height": 100,
+      "kind": "solid_rgb",
+      "rgb": [
+        255,
+        255,
+        255
+      ],
+      "width": 200
+    },
+    "id": "watermark-text-bottom-right",
+    "op": "add_watermark",
+    "options": {
+      "opacity": 1.0,
+      "position": "BottomRight",
+      "text": {
+        "colour": "#000000",
+        "size": 48.0,
+        "text": "Hi"
+      }
+    }
+  },
+  {
+    "expected": {
+      "height": 100,
+      "region_all_white": {
+        "x0": 140,
+        "x1": 200,
+        "y0": 60,
+        "y1": 100
+      },
+      "region_has_dark": {
+        "x0": 0,
+        "x1": 100,
+        "y0": 0,
+        "y1": 60
+      },
+      "width": 200
+    },
+    "fixture": {
+      "height": 100,
+      "kind": "solid_rgb",
+      "rgb": [
+        255,
+        255,
+        255
+      ],
+      "width": 200
+    },
+    "id": "watermark-text-top-left",
+    "op": "add_watermark",
+    "options": {
+      "opacity": 1.0,
+      "position": "TopLeft",
+      "text": {
+        "colour": "#000000",
+        "size": 48.0,
+        "text": "Hi"
+      }
+    }
+  },
+  {
+    "expected": {
+      "height": 200,
+      "regions_have_dark": [
+        {
+          "x0": 0,
+          "x1": 60,
+          "y0": 0,
+          "y1": 60
+        },
+        {
+          "x0": 140,
+          "x1": 200,
+          "y0": 140,
+          "y1": 200
+        }
+      ],
+      "width": 200
+    },
+    "fixture": {
+      "height": 200,
+      "kind": "solid_rgb",
+      "rgb": [
+        255,
+        255,
+        255
+      ],
+      "width": 200
+    },
+    "id": "watermark-tiled-covers-whole-image",
+    "op": "add_watermark",
+    "options": {
+      "opacity": 1.0,
+      "position": "Tiled",
+      "text": {
+        "colour": "#000000",
+        "size": 48.0,
+        "text": "Hi"
+      }
+    }
+  },
+  {
+    "expected": {
+      "height": 200,
+      "region_has_dark": {
+        "x0": 50,
+        "x1": 150,
+        "y0": 50,
+        "y1": 150
+      },
+      "width": 200
+    },
+    "fixture": {
+      "height": 200,
+      "kind": "solid_rgb",
+      "rgb": [
+        255,
+        255,
+        255
+      ],
+      "width": 200
+    },
+    "id": "watermark-rotated-keeps-dimensions",
+    "op": "add_watermark",
+    "options": {
+      "opacity": 1.0,
+      "position": "Center",
+      "rotation_deg": 45.0,
+      "text": {
+        "colour": "#000000",
+        "size": 48.0,
+        "text": "Hi"
+      }
+    }
+  },
+  {
+    "expected": {
+      "height": 100,
+      "pixels": [
+        {
+          "rgba": [
+            255,
+            0,
+            0,
+            255
+          ],
+          "x": 50,
+          "y": 50
+        },
+        {
+          "rgba": [
+            255,
+            255,
+            255,
+            255
+          ],
+          "x": 5,
+          "y": 5
+        }
+      ],
+      "width": 100
+    },
+    "fixture": {
+      "height": 100,
+      "kind": "solid_rgb",
+      "rgb": [
+        255,
+        255,
+        255
+      ],
+      "width": 100
+    },
+    "id": "watermark-logo-centred-opaque",
+    "op": "add_watermark",
+    "options": {
+      "logo": {
+        "image": {
+          "height": 20,
+          "kind": "solid_rgb",
+          "rgb": [
+            255,
+            0,
+            0
+          ],
+          "width": 20
+        },
+        "scale": 1.0
+      },
+      "opacity": 1.0,
+      "position": "Center"
+    }
+  },
+  {
+    "expected": {
+      "height": 100,
+      "pixels": [
+        {
+          "b": 255,
+          "x": 50,
+          "y": 50
+        },
+        {
+          "rgba": [
+            255,
+            255,
+            255,
+            255
+          ],
+          "x": 30,
+          "y": 30
+        }
+      ],
+      "width": 100
+    },
+    "fixture": {
+      "height": 100,
+      "kind": "solid_rgb",
+      "rgb": [
+        255,
+        255,
+        255
+      ],
+      "width": 100
+    },
+    "id": "watermark-logo-scaled-half",
+    "op": "add_watermark",
+    "options": {
+      "logo": {
+        "image": {
+          "height": 40,
+          "kind": "solid_rgb",
+          "rgb": [
+            0,
+            0,
+            255
+          ],
+          "width": 40
+        },
+        "scale": 0.5
+      },
+      "opacity": 1.0,
+      "position": "Center"
+    }
+  },
+  {
+    "expected": {
+      "error": "INVALID_ARGUMENT"
+    },
+    "fixture": {
+      "height": 100,
+      "kind": "solid_rgb",
+      "rgb": [
+        255,
+        255,
+        255
+      ],
+      "width": 100
+    },
+    "id": "watermark-no-text-no-logo",
+    "op": "add_watermark",
+    "options": {}
+  },
+  {
+    "expected": {
+      "error": "INVALID_ARGUMENT"
+    },
+    "fixture": {
+      "height": 100,
+      "kind": "solid_rgb",
+      "rgb": [
+        255,
+        255,
+        255
+      ],
+      "width": 100
+    },
+    "id": "watermark-opacity-out-of-range",
+    "op": "add_watermark",
+    "options": {
+      "opacity": 1.5,
+      "position": "BottomRight",
+      "text": {
+        "colour": "#000000",
+        "size": 48.0,
+        "text": "Hi"
+      }
+    }
+  },
+  {
+    "expected": {
+      "error": "INVALID_ARGUMENT"
+    },
+    "fixture": {
+      "height": 100,
+      "kind": "solid_rgb",
+      "rgb": [
+        255,
+        255,
+        255
+      ],
+      "width": 100
+    },
+    "id": "watermark-empty-text",
+    "op": "add_watermark",
+    "options": {
+      "opacity": 1.0,
+      "position": "BottomRight",
+      "text": {
+        "colour": "#000000",
+        "size": 48.0,
+        "text": ""
+      }
+    }
+  },
+  {
+    "expected": {
+      "error": "INVALID_IMAGE"
+    },
+    "fixture": {
+      "derived_from": "bytes [0, 1, 2, 3]",
+      "kind": "garbage"
+    },
+    "id": "watermark-garbage-input",
+    "op": "add_watermark",
+    "options": {
+      "opacity": 1.0,
+      "position": "BottomRight",
+      "text": {
+        "colour": "#000000",
+        "size": 48.0,
+        "text": "Hi"
+      }
+    }
+  },
+  {
+    "annotations": [
+      {
+        "colour": "#FF0000",
+        "fill": "#FF0000",
+        "h": 30,
+        "type": "Rect",
+        "w": 40,
+        "width": 2,
+        "x": 10,
+        "y": 10
+      },
+      {
+        "colour": "#0000FF",
+        "fill": null,
+        "h": 30,
+        "type": "Rect",
+        "w": 30,
+        "width": 3,
+        "x": 60,
+        "y": 10
+      }
+    ],
+    "expected": {
+      "height": 100,
+      "pixels": [
+        {
+          "rgba": [
+            255,
+            0,
+            0,
+            255
+          ],
+          "x": 30,
+          "y": 25
+        },
+        {
+          "b": 255,
+          "x": 60,
+          "y": 10
+        },
+        {
+          "rgba": [
+            255,
+            255,
+            255,
+            255
+          ],
+          "x": 75,
+          "y": 25
+        }
+      ],
+      "width": 100
+    },
+    "fixture": {
+      "height": 100,
+      "kind": "solid_rgb",
+      "rgb": [
+        255,
+        255,
+        255
+      ],
+      "width": 100
+    },
+    "id": "annotate-filled-and-outline-rect",
+    "op": "annotate_image"
+  },
+  {
+    "annotations": [
+      {
+        "colour": "#000000",
+        "from": [
+          0,
+          0
+        ],
+        "to": [
+          99,
+          99
+        ],
+        "type": "Line",
+        "width": 1
+      },
+      {
+        "colour": "#FF0000",
+        "from": [
+          10,
+          80
+        ],
+        "to": [
+          90,
+          80
+        ],
+        "type": "Arrow",
+        "width": 2
+      }
+    ],
+    "expected": {
+      "height": 100,
+      "pixels": [
+        {
+          "r_max": 127,
+          "x": 50,
+          "y": 50
+        },
+        {
+          "rgba": [
+            255,
+            0,
+            0,
+            255
+          ],
+          "x": 50,
+          "y": 80
+        },
+        {
+          "r": 255,
+          "x": 90,
+          "y": 80
+        }
+      ],
+      "width": 100
+    },
+    "fixture": {
+      "height": 100,
+      "kind": "solid_rgb",
+      "rgb": [
+        255,
+        255,
+        255
+      ],
+      "width": 100
+    },
+    "id": "annotate-line-and-arrow",
+    "op": "annotate_image"
+  },
+  {
+    "annotations": [
+      {
+        "colour": "#0000FF",
+        "fill": "#0000FF",
+        "h": 40,
+        "type": "Ellipse",
+        "w": 40,
+        "width": 2,
+        "x": 10,
+        "y": 10
+      }
+    ],
+    "expected": {
+      "height": 100,
+      "pixels": [
+        {
+          "rgba": [
+            0,
+            0,
+            255,
+            255
+          ],
+          "x": 30,
+          "y": 30
+        },
+        {
+          "rgba": [
+            255,
+            255,
+            255,
+            255
+          ],
+          "x": 11,
+          "y": 11
+        }
+      ],
+      "width": 100
+    },
+    "fixture": {
+      "height": 100,
+      "kind": "solid_rgb",
+      "rgb": [
+        255,
+        255,
+        255
+      ],
+      "width": 100
+    },
+    "id": "annotate-filled-ellipse",
+    "op": "annotate_image"
+  },
+  {
+    "annotations": [
+      {
+        "colour": "#000000",
+        "size": 40.0,
+        "text": "A",
+        "type": "Text",
+        "x": 10,
+        "y": 10
+      }
+    ],
+    "expected": {
+      "height": 100,
+      "region_has_dark": {
+        "x0": 10,
+        "x1": 60,
+        "y0": 10,
+        "y1": 60
+      },
+      "width": 200
+    },
+    "fixture": {
+      "height": 100,
+      "kind": "solid_rgb",
+      "rgb": [
+        255,
+        255,
+        255
+      ],
+      "width": 200
+    },
+    "id": "annotate-text-draws",
+    "op": "annotate_image"
+  },
+  {
+    "annotations": [],
+    "expected": {
+      "error": "INVALID_ARGUMENT"
+    },
+    "fixture": {
+      "height": 100,
+      "kind": "solid_rgb",
+      "rgb": [
+        255,
+        255,
+        255
+      ],
+      "width": 100
+    },
+    "id": "annotate-empty-list",
+    "op": "annotate_image"
+  },
+  {
+    "annotations": [
+      {
+        "colour": "#000000",
+        "fill": null,
+        "h": 10,
+        "type": "Rect",
+        "w": 0,
+        "width": 1,
+        "x": 0,
+        "y": 0
+      }
+    ],
+    "expected": {
+      "error": "INVALID_ARGUMENT"
+    },
+    "fixture": {
+      "height": 100,
+      "kind": "solid_rgb",
+      "rgb": [
+        255,
+        255,
+        255
+      ],
+      "width": 100
+    },
+    "id": "annotate-zero-width-rect",
+    "op": "annotate_image"
+  },
+  {
+    "annotations": [
+      {
+        "colour": "#000000",
+        "from": [
+          0,
+          0
+        ],
+        "to": [
+          10,
+          10
+        ],
+        "type": "Line",
+        "width": 1
+      }
+    ],
+    "expected": {
+      "error": "INVALID_IMAGE"
+    },
+    "fixture": {
+      "derived_from": "bytes [9, 9, 9]",
+      "kind": "garbage"
+    },
+    "id": "annotate-garbage-input",
+    "op": "annotate_image"
+  },
+  {
+    "expected": {
+      "colour": {
+        "a": 255,
+        "b": 30,
+        "g": 20,
+        "hex": "#0A141E",
+        "r": 10
+      }
+    },
+    "fixture": {
+      "height": 48,
+      "kind": "solid_rgb",
+      "rgb": [
+        10,
+        20,
+        30
+      ],
+      "width": 64
+    },
+    "id": "pick-colour-known-pixel",
+    "op": "pick_colour",
+    "options": {
+      "x": 5,
+      "y": 5
+    }
+  },
+  {
+    "expected": {
+      "different_from": {
+        "x": 99,
+        "y": 5
+      }
+    },
+    "fixture": {
+      "height": 10,
+      "kind": "gradient",
+      "seed": 3,
+      "width": 100
+    },
+    "id": "pick-colour-gradient-position-matters",
+    "op": "pick_colour",
+    "options": {
+      "x": 0,
+      "y": 5
+    }
+  },
+  {
+    "expected": {
+      "error": "PIXEL_OUT_OF_BOUNDS"
+    },
+    "fixture": {
+      "height": 48,
+      "kind": "solid_rgb",
+      "rgb": [
+        255,
+        255,
+        255
+      ],
+      "width": 64
+    },
+    "id": "pick-colour-out-of-bounds-x",
+    "op": "pick_colour",
+    "options": {
+      "x": 64,
+      "y": 0
+    }
+  },
+  {
+    "expected": {
+      "error": "PIXEL_OUT_OF_BOUNDS"
+    },
+    "fixture": {
+      "height": 48,
+      "kind": "solid_rgb",
+      "rgb": [
+        255,
+        255,
+        255
+      ],
+      "width": 64
+    },
+    "id": "pick-colour-out-of-bounds-y",
+    "op": "pick_colour",
+    "options": {
+      "x": 0,
+      "y": 48
+    }
+  },
+  {
+    "expected": {
+      "palette_hexes": [
+        "#FF0000",
+        "#0000FF"
+      ],
+      "palette_length": 2,
+      "share_each": 0.5,
+      "share_sum": 1.0,
+      "share_sum_tolerance": 0.001,
+      "share_tolerance": 0.01
+    },
+    "fixture": {
+      "height": 10,
+      "kind": "two_colour",
+      "width": 100
+    },
+    "id": "palette-two-colours-most-frequent-first",
+    "op": "extract_palette",
+    "options": {
+      "count": 2
+    }
+  },
+  {
+    "expected": {
+      "palette": [
+        {
+          "hex": "#010203",
+          "share": 1.0,
+          "share_tolerance": 0.001
+        }
+      ],
+      "palette_length": 1
+    },
+    "fixture": {
+      "height": 50,
+      "kind": "solid_rgb",
+      "rgb": [
+        1,
+        2,
+        3
+      ],
+      "width": 50
+    },
+    "id": "palette-solid-is-one-entry-share-one",
+    "op": "extract_palette",
+    "options": {
+      "count": 4
+    }
+  },
+  {
+    "expected": {
+      "error": "INVALID_ARGUMENT"
+    },
+    "fixture": {
+      "height": 10,
+      "kind": "two_colour",
+      "width": 100
+    },
+    "id": "palette-count-zero",
+    "op": "extract_palette",
+    "options": {
+      "count": 0
+    }
+  },
+  {
+    "expected": {
+      "error": "INVALID_ARGUMENT"
+    },
+    "fixture": {
+      "height": 10,
+      "kind": "two_colour",
+      "width": 100
+    },
+    "id": "palette-count-17",
+    "op": "extract_palette",
+    "options": {
+      "count": 17
+    }
+  },
+  {
+    "expected": {
+      "error": "INVALID_IMAGE"
+    },
+    "fixture": {
+      "derived_from": "bytes [1, 2, 3]",
+      "kind": "garbage"
+    },
+    "id": "palette-garbage-input",
+    "op": "extract_palette",
+    "options": {
+      "count": 4
+    }
+  },
+  {
+    "expected": {
+      "format": "png",
+      "height": 100,
+      "pixels": [
+        {
+          "rgba": [
+            255,
+            0,
+            0,
+            255
+          ],
+          "x": 55,
+          "y": 50
+        },
+        {
+          "rgba": [
+            0,
+            0,
+            255,
+            255
+          ],
+          "x": 155,
+          "y": 50
+        },
+        {
+          "rgba": [
+            255,
+            255,
+            255,
+            255
+          ],
+          "x": 105,
+          "y": 50
+        }
+      ],
+      "width": 210
+    },
+    "fixtures": [
+      {
+        "height": 80,
+        "kind": "solid_rgb",
+        "rgb": [
+          255,
+          0,
+          0
+        ],
+        "width": 90
+      },
+      {
+        "height": 80,
+        "kind": "solid_rgb",
+        "rgb": [
+          0,
+          0,
+          255
+        ],
+        "width": 90
+      }
+    ],
+    "id": "collage-grid-1x2-gap-and-background",
+    "notes": "Collage output is always PNG.",
+    "op": "make_collage",
+    "options": {
+      "background": "#FFFFFF",
+      "gap": 10,
+      "height": 100,
+      "layout": {
+        "Grid": {
+          "cols": 2,
+          "rows": 1
+        }
+      },
+      "width": 210
+    }
+  },
+  {
+    "expected": {
+      "height": 100,
+      "pixels": [
+        {
+          "rgba": [
+            255,
+            0,
+            0,
+            255
+          ],
+          "x": 100,
+          "y": 50
+        }
+      ],
+      "width": 200
+    },
+    "fixtures": [
+      {
+        "height": 40,
+        "kind": "solid_rgb",
+        "rgb": [
+          255,
+          0,
+          0
+        ],
+        "width": 40
+      }
+    ],
+    "id": "collage-row-single-fills-canvas",
+    "op": "make_collage",
+    "options": {
+      "background": "#00FF00",
+      "cell_fit": "Stretch",
+      "gap": 0,
+      "height": 100,
+      "layout": "Row",
+      "width": 200
+    }
+  },
+  {
+    "expected": {
+      "error": "EMPTY_INPUT"
+    },
+    "fixtures": [],
+    "id": "collage-empty-input-list",
+    "op": "make_collage",
+    "options": {
+      "background": "#FFFFFF",
+      "gap": 8,
+      "height": 1200,
+      "layout": {
+        "Grid": {
+          "cols": 2,
+          "rows": 2
+        }
+      },
+      "width": 1200
+    }
+  },
+  {
+    "expected": {
+      "error": "INVALID_ARGUMENT"
+    },
+    "fixtures": [
+      {
+        "height": 40,
+        "kind": "solid_rgb",
+        "rgb": [
+          255,
+          0,
+          0
+        ],
+        "width": 40
+      },
+      {
+        "height": 40,
+        "kind": "solid_rgb",
+        "rgb": [
+          255,
+          0,
+          0
+        ],
+        "width": 40
+      }
+    ],
+    "id": "collage-too-many-images-for-1x1",
+    "op": "make_collage",
+    "options": {
+      "background": "#FFFFFF",
+      "gap": 8,
+      "height": 1200,
+      "layout": {
+        "Grid": {
+          "cols": 1,
+          "rows": 1
+        }
+      },
+      "width": 1200
+    }
+  },
+  {
+    "expected": {
+      "error": "INVALID_ARGUMENT"
+    },
+    "fixtures": [
+      {
+        "height": 40,
+        "kind": "solid_rgb",
+        "rgb": [
+          255,
+          0,
+          0
+        ],
+        "width": 40
+      }
+    ],
+    "id": "collage-grid-5x1-out-of-range",
+    "op": "make_collage",
+    "options": {
+      "background": "#FFFFFF",
+      "gap": 8,
+      "height": 1200,
+      "layout": {
+        "Grid": {
+          "cols": 1,
+          "rows": 5
+        }
+      },
+      "width": 1200
+    }
+  },
+  {
+    "expected": {
+      "error": "INVALID_DIMENSIONS"
+    },
+    "fixtures": [
+      {
+        "height": 40,
+        "kind": "solid_rgb",
+        "rgb": [
+          255,
+          0,
+          0
+        ],
+        "width": 40
+      }
+    ],
+    "id": "collage-zero-output-size",
+    "op": "make_collage",
+    "options": {
+      "background": "#FFFFFF",
+      "gap": 8,
+      "height": 1200,
+      "layout": {
+        "Grid": {
+          "cols": 2,
+          "rows": 2
+        }
+      },
+      "width": 0
+    }
+  },
+  {
+    "expected": {
+      "differs_from_input": [
+        [
+          5,
+          5
+        ]
+      ],
+      "height": 100,
+      "pixel_equalities": [
+        {
+          "a": [
+            5,
+            5
+          ],
+          "b": [
+            19,
+            19
+          ],
+          "equal": true
+        },
+        {
+          "a": [
+            25,
+            25
+          ],
+          "b": [
+            39,
+            39
+          ],
+          "equal": true
+        },
+        {
+          "a": [
+            5,
+            5
+          ],
+          "b": [
+            25,
+            25
+          ],
+          "equal": false
+        }
+      ],
+      "width": 100
+    },
+    "fixture": {
+      "height": 100,
+      "kind": "gradient",
+      "seed": 3,
+      "width": 100
+    },
+    "id": "pixelate-full-image-blocks-become-flat",
+    "op": "pixelate_image",
+    "options": {
+      "block_size": 20,
+      "height": 100,
+      "width": 100,
+      "x": 0,
+      "y": 0
+    }
+  },
+  {
+    "expected": {
+      "height": 100,
+      "unchanged_pixels": [
+        [
+          90,
+          90
+        ]
+      ],
+      "width": 100
+    },
+    "fixture": {
+      "height": 100,
+      "kind": "gradient",
+      "seed": 3,
+      "width": 100
+    },
+    "id": "pixelate-rect-only-leaves-rest-untouched",
+    "op": "pixelate_image",
+    "options": {
+      "block_size": 10,
+      "height": 50,
+      "width": 50,
+      "x": 0,
+      "y": 0
+    }
+  },
+  {
+    "expected": {
+      "error": "INVALID_ARGUMENT"
+    },
+    "fixture": {
+      "height": 100,
+      "kind": "gradient",
+      "seed": 3,
+      "width": 100
+    },
+    "id": "pixelate-block-size-1",
+    "op": "pixelate_image",
+    "options": {
+      "block_size": 1
+    }
+  },
+  {
+    "expected": {
+      "error": "INVALID_ARGUMENT"
+    },
+    "fixture": {
+      "height": 100,
+      "kind": "gradient",
+      "seed": 3,
+      "width": 100
+    },
+    "id": "pixelate-block-size-101",
+    "op": "pixelate_image",
+    "options": {
+      "block_size": 101
+    }
+  },
+  {
+    "expected": {
+      "error": "INVALID_ARGUMENT"
+    },
+    "fixture": {
+      "height": 100,
+      "kind": "gradient",
+      "seed": 3,
+      "width": 100
+    },
+    "id": "pixelate-rect-out-of-bounds",
+    "op": "pixelate_image",
+    "options": {
+      "block_size": 10,
+      "height": 10,
+      "width": 20,
+      "x": 90,
+      "y": 0
+    }
+  },
+  {
+    "bulk_op": "Pixelate",
+    "expected": {
+      "results": [
+        {
+          "index": 0,
+          "ok": true,
+          "output": "Image"
+        },
+        {
+          "error": "INVALID_IMAGE",
+          "index": 1,
+          "ok": false
+        },
+        {
+          "index": 2,
+          "ok": true,
+          "output": "Image"
+        }
+      ]
+    },
+    "fixtures": [
+      {
+        "height": 32,
+        "kind": "solid",
+        "seed": 1,
+        "width": 32
+      },
+      {
+        "derived_from": "bytes [0, 1, 2, 3]",
+        "kind": "garbage"
+      },
+      {
+        "height": 32,
+        "kind": "solid",
+        "seed": 1,
+        "width": 32
+      }
+    ],
+    "id": "bulk-preserves-order-and-reports-partial-failures",
+    "notes": "bulk_process signature is bulk_process(inputs, &BulkOp) \u2014 op + options merged into one enum.",
+    "op": "bulk_process",
+    "options": {
+      "block_size": 10
+    }
+  },
+  {
+    "bulk_op": "PickColour",
+    "expected": {
+      "results": [
+        {
+          "colour": {
+            "hex": "#090807"
+          },
+          "index": 0,
+          "ok": true,
+          "output": "Colour"
+        }
+      ]
+    },
+    "fixtures": [
+      {
+        "height": 20,
+        "kind": "solid_rgb",
+        "rgb": [
+          9,
+          8,
+          7
+        ],
+        "width": 20
+      }
+    ],
+    "id": "bulk-pick-colour",
+    "op": "bulk_process",
+    "options": {
+      "x": 3,
+      "y": 3
+    }
+  },
+  {
+    "bulk_op": "Palette",
+    "expected": {
+      "results": [
+        {
+          "index": 0,
+          "ok": true,
+          "output": "Palette",
+          "palette": [
+            {
+              "hex": "#090807"
+            }
+          ],
+          "palette_length": 1
+        }
+      ]
+    },
+    "fixtures": [
+      {
+        "height": 20,
+        "kind": "solid_rgb",
+        "rgb": [
+          9,
+          8,
+          7
+        ],
+        "width": 20
+      }
+    ],
+    "id": "bulk-palette",
+    "op": "bulk_process",
+    "options": {
+      "count": 2
+    }
+  },
+  {
+    "bulk_op": "Collage",
+    "expected": {
+      "results": [
+        {
+          "error": "INVALID_ARGUMENT",
+          "index": 0,
+          "ok": false
+        }
+      ]
+    },
+    "fixtures": [
+      {
+        "height": 32,
+        "kind": "solid",
+        "seed": 1,
+        "width": 32
+      }
+    ],
+    "id": "bulk-collage-is-per-item-invalid-argument",
+    "notes": "BulkOp::Collage returns INVALID_ARGUMENT per item \u2014 collage must be called via make_collage.",
+    "op": "bulk_process",
+    "options": {}
+  },
+  {
+    "bulk_op": "Pixelate",
+    "expected": {
+      "results": []
+    },
+    "fixtures": [],
+    "id": "bulk-empty-input-list",
+    "op": "bulk_process",
+    "options": {
+      "block_size": 10
+    }
+  },
+  {
+    "bulk_op": "Watermark",
+    "expected": {
+      "results": [
+        {
+          "height": 100,
+          "index": 0,
+          "ok": true,
+          "output": "Image",
+          "width": 100
+        }
+      ]
+    },
+    "fixtures": [
+      {
+        "height": 100,
+        "kind": "solid_rgb",
+        "rgb": [
+          255,
+          255,
+          255
+        ],
+        "width": 100
+      }
+    ],
+    "id": "bulk-watermark-roundtrip",
+    "op": "bulk_process",
+    "options": {
+      "opacity": 1.0,
+      "position": "BottomRight",
+      "text": {
+        "colour": "#000000",
+        "size": 48.0,
+        "text": "Hi"
+      }
+    }
+  },
+  {
+    "id": "bulk-annotate-roundtrip",
+    "op": "bulk_process",
+    "bulk_op": "Annotate",
+    "annotations": [
+      {
+        "type": "Line",
+        "from": [
+          0,
+          0
+        ],
+        "to": [
+          99,
+          99
+        ],
+        "colour": "#000000",
+        "width": 1
+      }
+    ],
+    "fixtures": [
+      {
+        "kind": "solid_rgb",
+        "rgb": [
+          255,
+          255,
+          255
+        ],
+        "width": 100,
+        "height": 100
+      }
+    ],
+    "options": {},
+    "expected": {
+      "results": [
+        {
+          "index": 0,
+          "ok": true,
+          "output": "Image",
+          "width": 100,
+          "height": 100
+        }
+      ]
+    }
+  }
+]

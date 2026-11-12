@@ -1,0 +1,78 @@
+---
+title: Palette
+description: Extract the dominant colours of an image — most frequent first, with each colour's share.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Extract the dominant colours of an image — most frequent first, each
+with its share of the image.
+
+## Function
+
+```rust
+extract_palette(input, count: u8) -> Vec<PaletteColour>
+```
+
+| Language | Name |
+| --- | --- |
+| Rust | `extract_palette` |
+| JavaScript | `extractPalette` |
+| Python | `extract_palette` |
+| CLI | `dusrelimage palette <input> --count 5` |
+
+`count` is 1–16. Each returned colour carries its `hex` plus a `share`
+(0–1) — the fraction of sampled pixels closest to that colour.
+
+## How it works
+
+Median-cut quantisation over sampled pixels: the colour space is split
+at the median until `count` clusters remain, and each cluster's centre
+becomes a palette colour. Sampling keeps it fast on large photos; the
+result is deterministic for the same input.
+
+## Examples
+
+```js
+import { extractPalette } from 'dusrelimage';
+
+const palette = extractPalette(input, 5);
+// [
+//   { hex: "#2b3a55", r: 43, g: 58, b: 85, a: 255, hsl: [...], share: 0.42 },
+//   { hex: "#e8e4da", ..., share: 0.21 },
+//   ...
+// ]
+for (const c of palette) console.log(c.hex, `${(c.share * 100).toFixed(1)}%`);
+```
+
+```python
+from dusrelimage import extract_palette
+
+for colour in extract_palette(data, 5):
+    print(colour["hex"], round(colour["share"], 3))
+```
+
+```bash
+$ dusrelimage palette photo.jpg --count 5
+#2B3A55  42.0%
+#E8E4DA  21.0%
+#7FA3C7  15.4%
+#C96F4A   12.1%
+#1A1A1A   9.5%
+```
+
+<Aside type="note" title="No rival does this out of the box">
+  In the 2026-11-12 research, a dedicated palette extractor exists in
+  none of Sharp, Pillow, ImageMagick, Squoosh, Jimp, Intervention Image
+  or Photon — it is manual pixel work everywhere else. See
+  [Comparison](/comparison/).
+</Aside>
+
+## Errors
+
+| Code | When |
+| --- | --- |
+| `INVALID_IMAGE` | Input is not a decodable image. |
+| `INVALID_ARGUMENT` | `count` outside 1–16. |
+| `IMAGE_TOO_LARGE` | Over `max_pixels` (default 120,000,000). |
+| `EMPTY_INPUT` | Empty input bytes. |

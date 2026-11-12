@@ -1,0 +1,88 @@
+---
+title: Watermark
+description: Stamp text or a logo image onto a photo — 9 anchors plus tiled, with opacity, rotation and margin.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Stamp a text or logo watermark onto an image — at one of 9 anchor
+positions, or tiled across the whole image.
+
+## Function
+
+```rust
+add_watermark(input, &WatermarkOptions) -> Vec<u8>
+```
+
+| Language | Name |
+| --- | --- |
+| Rust | `add_watermark` |
+| JavaScript | `addWatermark` |
+| Python | `add_watermark` |
+| CLI | `dusrelimage watermark <input> --text "© dusrel" -o out.jpg` |
+
+## Options
+
+| Field | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `text` | TextWatermark or null | `null` | Text stamp: `text` string, `size` (font size), `colour`. |
+| `logo` | ImageWatermark or null | `null` | Logo stamp: image bytes, `scale`, `opacity`, `position`, `margin`. |
+| `opacity` | f32 | `0.5` | Overall opacity, 0–1. Outside 0–1 → `INVALID_ARGUMENT`. |
+| `position` | Position | `BottomRight` | 9 anchors or `Tiled` (see below). |
+| `rotation_deg` | f32 | `0` | Rotation in degrees, clockwise. |
+| `margin` | u32 | `16` | Distance from the edge, in pixels. |
+
+Give `text`, `logo`, or both — text is drawn first, then the logo.
+Giving neither is `INVALID_ARGUMENT`.
+
+### Positions
+
+`TopLeft`, `TopCenter`, `TopRight`, `CenterLeft`, `Center`,
+`CenterRight`, `BottomLeft`, `BottomCenter`, `BottomRight`, or `Tiled`
+(repeat the watermark in a grid across the whole image — the usual
+anti-theft stamp for proofs).
+
+Text is drawn with the bundled DejaVu Sans font (`ab_glyph`).
+
+## Examples
+
+```js
+import { addWatermark } from 'dusrelimage';
+
+// Text stamp, bottom right, semi-transparent
+const out = addWatermark(input, {
+  text: { text: '© dusrel', size: 36, colour: '#ffffff' },
+  opacity: 0.5,
+  position: 'BottomRight',
+});
+
+// Diagonal tiled stamp across the whole image
+const proof = addWatermark(input, {
+  text: { text: 'PROOF', size: 48, colour: '#ffffff' },
+  opacity: 0.25,
+  position: 'Tiled',
+  rotationDeg: -30,
+});
+
+// Logo stamp, scaled to 20% of the image width
+const branded = addWatermark(input, {
+  logo: { image: logoBytes, scale: 0.2 },
+  opacity: 0.8,
+  position: 'BottomRight',
+  margin: 24,
+});
+```
+
+```bash
+dusrelimage watermark photo.jpg --text "© dusrel" --opacity 0.5 -o marked.jpg
+dusrelimage watermark photo.jpg --logo logo.png --position bottom-right -o marked.jpg
+```
+
+## Errors
+
+| Code | When |
+| --- | --- |
+| `INVALID_IMAGE` | Input (or logo) is not a decodable image. |
+| `INVALID_ARGUMENT` | Neither `text` nor `logo` given; opacity outside 0–1. |
+| `IMAGE_TOO_LARGE` | Over `max_pixels` (default 120,000,000). |
+| `EMPTY_INPUT` | Empty input bytes. |

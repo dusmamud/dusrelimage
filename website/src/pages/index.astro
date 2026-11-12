@@ -1,0 +1,251 @@
+---
+/**
+ * dusrelimage landing page.
+ *
+ * Pure static page — no WASM here. (The playground at /playground/ is
+ * where the real WASM build is lazy-loaded.)
+ */
+const title = 'dusrelimage — Offline image toolkit';
+const description =
+	'Compress, resize, crop, convert, watermark, annotate, pick colours, extract palettes, build collages and pixelate — offline. One Rust core, zero network calls, Hindi + English error messages.';
+---
+
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>{title}</title>
+		<meta name="description" content={description} />
+		<meta property="og:type" content="website" />
+		<meta property="og:site_name" content="dusrelimage" />
+		<meta property="og:title" content={title} />
+		<meta property="og:description" content={description} />
+		<meta property="og:url" content="https://dusrelimage.pages.dev/" />
+		<meta property="og:image" content="https://dusrelimage.pages.dev/og.svg" />
+		<meta name="twitter:card" content="summary_large_image" />
+		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+		<link rel="canonical" href="https://dusrelimage.pages.dev/" />
+		<script type="application/ld+json" set:html={JSON.stringify({
+			'@context': 'https://schema.org',
+			'@type': 'SoftwareApplication',
+			name: 'dusrelimage',
+			applicationCategory: 'DeveloperApplication',
+			operatingSystem: 'Cross-platform',
+			description,
+			author: { '@type': 'Person', name: 'dusmamud' },
+			offers: { '@type': 'Offer', price: '0', priceCurrency: 'INR' },
+			softwareVersion: '0.1.0',
+			url: 'https://dusrelimage.pages.dev/',
+		})} />
+		<style>
+			:root { --bg: #0f172a; --card: #1e293b; --ink: #f8fafc; --muted: #94a3b8; --green: #22c55e; --red: #f87171; --amber: #fbbf24; --line: #334155; }
+			* { box-sizing: border-box; }
+			body { margin: 0; font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; background: var(--bg); color: var(--ink); line-height: 1.6; }
+			a { color: #4ade80; }
+			.wrap { max-width: 960px; margin: 0 auto; padding: 0 20px 64px; }
+			header { display: flex; justify-content: space-between; align-items: center; padding: 20px 0; }
+			.logo { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 1.25rem; color: var(--ink); text-decoration: none; }
+			.logo img { width: 32px; height: 32px; }
+			nav a { color: var(--muted); text-decoration: none; margin-left: 20px; font-weight: 600; }
+			nav a:hover { color: var(--ink); }
+			.hero { padding: 48px 0 8px; }
+			.hero h1 { font-size: clamp(2rem, 5vw, 3.25rem); line-height: 1.12; margin: 0 0 16px; }
+			.hero h1 span { color: var(--green); }
+			.hero p { font-size: 1.2rem; color: var(--muted); max-width: 640px; margin: 0 0 24px; }
+			.cta { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 40px; }
+			.btn { display: inline-block; padding: 12px 22px; border-radius: 10px; font-weight: 700; text-decoration: none; }
+			.btn-primary { background: var(--green); color: #052e12; }
+			.btn-ghost { border: 1px solid var(--line); color: var(--ink); }
+			h2 { margin: 48px 0 12px; font-size: 1.5rem; }
+			pre { background: #020617; border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; overflow-x: auto; font-size: 0.95rem; margin: 0 0 12px; }
+			pre code { color: #e2e8f0; }
+			.install-tabs { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+			.install-tabs button { background: var(--card); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 8px 16px; cursor: pointer; font-weight: 600; }
+			.install-tabs button[aria-pressed="true"] { border-color: var(--green); color: var(--green); }
+			.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
+			.card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 18px; }
+			.card h3 { margin: 0 0 6px; font-size: 1.05rem; }
+			.card p { margin: 0; color: var(--muted); font-size: 0.95rem; }
+			table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
+			th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+			th { color: var(--muted); font-weight: 600; }
+			td code { color: #e2e8f0; }
+			.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; }
+			.limits { background: #451a03; border: 1px solid #92400e; border-radius: 12px; padding: 18px 20px; }
+			.limits h2 { margin-top: 0; color: var(--amber); }
+			.limits p, .limits li { color: #fde68a; }
+			footer { margin-top: 56px; border-top: 1px solid var(--line); padding-top: 20px; color: var(--muted); font-size: 0.9rem; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+		</style>
+	</head>
+	<body>
+		<div class="wrap">
+			<header>
+				<a class="logo" href="/"><img src="/favicon.svg" alt="" /> dusrelimage</a>
+				<nav>
+					<a href="/overview/">Docs</a>
+					<a href="/playground/">Playground</a>
+					<a href="https://github.com/dusmamud/dusrelimage">GitHub</a>
+				</nav>
+			</header>
+
+			<section class="hero">
+				<h1>dusrelimage — <span>Offline image toolkit</span></h1>
+				<p>
+					Compress, resize, crop, convert, watermark, annotate, pick colours,
+					extract palettes, build collages and pixelate — instantly, on-device,
+					with no network call and no data leaving your machine. One Rust core,
+					one package, bindings for JavaScript, Python and Rust, plus a CLI.
+				</p>
+				<div class="cta">
+					<a class="btn btn-primary" href="/guides/quickstart/">Get started →</a>
+					<a class="btn btn-ghost" href="/playground/">Try the playground</a>
+				</div>
+			</section>
+
+			<section>
+				<h2>Install</h2>
+				<div class="install-tabs" role="group" aria-label="Package manager">
+					<button type="button" data-install="npm" aria-pressed="true">npm</button>
+					<button type="button" data-install="pip" aria-pressed="false">pip</button>
+					<button type="button" data-install="cargo" aria-pressed="false">cargo</button>
+					<button type="button" data-install="cli" aria-pressed="false">CLI</button>
+				</div>
+				<pre id="install-cmd"><code>npm install dusrelimage</code></pre>
+				<pre><code>import &#123; compressImage &#125; from 'dusrelimage';
+
+const out = compressImage(input, &#123; quality: 70 &#125;); // Uint8Array out
+console.log(out.length);</code></pre>
+				<pre><code>from dusrelimage import compress_image
+
+out = compress_image(data, quality=70)  # bytes out</code></pre>
+			</section>
+
+			<section>
+				<h2>Why dusrelimage</h2>
+				<div class="grid">
+					<div class="card">
+						<h3>🖼️ 10 tools, one package</h3>
+						<p>Compress, resize, crop, convert, watermark, annotate, colour picker, palette, collage, pixelate. No per-feature subpackages.</p>
+					</div>
+					<div class="card">
+						<h3>🔌 Fully offline</h3>
+						<p>No API keys, no network calls, no per-image fees. Works in a Lambda, a CLI, or a browser with no internet. Your photos never leave the machine.</p>
+					</div>
+					<div class="card">
+						<h3>🦀 One Rust core</h3>
+						<p>One implementation, one test suite — the same rules in JavaScript, Python and Rust. No drift between ports, same answer everywhere.</p>
+					</div>
+					<div class="card">
+						<h3>🇮🇳 Hindi + English errors</h3>
+						<p>Every failure carries a stable code plus <code>message_en</code> and <code>message_hi</code>, so your error messages make sense to every user.</p>
+					</div>
+					<div class="card">
+						<h3>🎛️ Pro control</h3>
+						<p>Options everywhere: quality, fit modes, filters, positions, opacity, rotation, EXIF handling, size limits — a real control layer, not presets.</p>
+					</div>
+					<div class="card">
+						<h3>⌨️ CLI</h3>
+						<p><code>dusrelimage compress</code>, <code>resize</code>, <code>watermark</code>, <code>palette</code>, <code>collage</code> … with <code>--json</code> output for scripts.</p>
+					</div>
+					<div class="card">
+						<h3>🧪 Bytes in, bytes out</h3>
+						<p>Every operation takes bytes and returns bytes. No temp files, no shared state — steps compose like a pipeline.</p>
+					</div>
+					<div class="card">
+						<h3>🖥️ In-browser playground</h3>
+						<p>The real Rust core compiled to WASM. Your files never leave the browser — try it before installing anything.</p>
+					</div>
+				</div>
+			</section>
+
+			<section>
+				<h2>The 10 tools</h2>
+				<div class="table-wrap">
+					<table>
+						<thead>
+							<tr><th>Tool</th><th>What it does</th><th>Example</th></tr>
+						</thead>
+						<tbody>
+							<tr><td>Compress</td><td>Shrink file size at a quality, or to an exact target size</td><td><code>compressImage(img, &#123; quality: 70 &#125;)</code></td></tr>
+							<tr><td>Resize</td><td>New width / height / percent, fit modes, filters</td><td><code>resizeImage(img, &#123; width: 800 &#125;)</code></td></tr>
+							<tr><td>Crop</td><td>Cut a rectangle, or an anchor preset</td><td><code>cropImage(img, &#123; width: 500, height: 500, anchor: 'Center' &#125;)</code></td></tr>
+							<tr><td>Convert</td><td>Change format — JPEG, PNG, WebP, AVIF, GIF, BMP</td><td><code>convertImage(img, &#123; format: 'WebP' &#125;)</code></td></tr>
+							<tr><td>Watermark</td><td>Text or logo stamp, 9 anchors + tiled</td><td><code>addWatermark(img, &#123; text: &#123; text: '© dusrel' &#125; &#125;)</code></td></tr>
+							<tr><td>Annotate</td><td>Arrows, rectangles, ellipses, lines, text</td><td><code>annotateImage(img, [&#123; type: 'Arrow', … &#125;])</code></td></tr>
+							<tr><td>Colour picker</td><td>The exact colour of one pixel — hex, RGB, HSL</td><td><code>pickColour(img, 120, 80)</code></td></tr>
+							<tr><td>Palette</td><td>Dominant colours, most frequent first</td><td><code>extractPalette(img, 5)</code></td></tr>
+							<tr><td>Collage</td><td>Several images into one grid / row / column</td><td><code>makeCollage([a, b, c, d], &#123; layout: '2x2' &#125;)</code></td></tr>
+							<tr><td>Pixelate</td><td>Mosaic-blur a rectangle (faces, plates)</td><td><code>pixelateImage(img, &#123; x: 100, y: 80, width: 120, height: 120, blockSize: 16 &#125;)</code></td></tr>
+						</tbody>
+					</table>
+				</div>
+			</section>
+
+			<section>
+				<h2>Error codes — machine-readable, stable across releases</h2>
+				<div class="table-wrap">
+					<table>
+						<thead>
+							<tr><th>Code</th><th>Means</th></tr>
+						</thead>
+						<tbody>
+							<tr><td><code>INVALID_IMAGE</code></td><td>Input is not an image, is truncated, or cannot be decoded</td></tr>
+							<tr><td><code>UNSUPPORTED_FORMAT</code></td><td>Format recognised but not supported for this operation</td></tr>
+							<tr><td><code>IMAGE_TOO_LARGE</code></td><td>Over the <code>max_pixels</code> limit (default 120,000,000)</td></tr>
+							<tr><td><code>TARGET_SIZE_UNREACHABLE</code></td><td>Even the lowest quality exceeds the target size</td></tr>
+							<tr><td><code>CROP_OUT_OF_BOUNDS</code></td><td>Crop rectangle sticks out of the image</td></tr>
+							<tr><td><code>PIXEL_OUT_OF_BOUNDS</code></td><td>Picked pixel is outside the image</td></tr>
+							<tr><td><code>INVALID_QUALITY</code></td><td>Quality outside 1–100</td></tr>
+							<tr><td><code>INVALID_DIMENSIONS</code></td><td>Bad or missing dimensions, or a side over the limit</td></tr>
+							<tr><td><code>INVALID_ARGUMENT</code></td><td>Bad argument (opacity, block size, bad layout, …)</td></tr>
+							<tr><td><code>EMPTY_INPUT</code></td><td>Empty input list / byte buffer where one item is required</td></tr>
+							<tr><td><code>INVALID_TYPE</code></td><td>Wrong value type reached a bindings API</td></tr>
+						</tbody>
+					</table>
+				</div>
+				<p style="color: var(--muted); font-size: 0.95rem;">
+					Branch on <code>code</code>, never on the message text. Every failure also carries
+					a Hindi message (<code>message_hi</code>). <a href="/guides/error-codes/">Full error-code table →</a>
+				</p>
+			</section>
+
+			<section class="limits">
+				<h2>⚠️ Honest limits — read this first</h2>
+				<p>
+					v0.1.0 has <strong>no HEIC support</strong> and does
+					<strong>not</strong> stream — the whole image lives in memory.
+				</p>
+				<ul>
+					<li>AVIF encode is lossy-only / 8-bit (underlying crate limit).</li>
+					<li>GIF encode is first-frame only for animated input — animation is dropped.</li>
+					<li>Images larger than 120,000,000 pixels are refused with <code>IMAGE_TOO_LARGE</code>.</li>
+					<li>Collage layouts are grid (1×1–4×4), row and column only — no masonry yet.</li>
+				</ul>
+				<p><a href="/changelog/">Full changelog →</a></p>
+			</section>
+
+			<footer>
+				<span>dusrelimage — open source, by dusmamud.</span>
+				<span><a href="/guides/quickstart/">Docs</a> · <a href="/playground/">Playground</a> · <a href="https://github.com/dusmamud/dusrelimage">GitHub</a></span>
+			</footer>
+		</div>
+
+		<script>
+			const INSTALL_CMDS = {
+				npm: 'npm install dusrelimage',
+				pip: 'pip install dusrelimage',
+				cargo: 'cargo add dusrelimage',
+				cli: 'cargo install --path crates/dusrelimage-cli',
+			};
+
+			document.querySelectorAll('[data-install]').forEach((btn) => {
+				btn.addEventListener('click', () => {
+					document.querySelectorAll('[data-install]').forEach((b) => b.setAttribute('aria-pressed', 'false'));
+					btn.setAttribute('aria-pressed', 'true');
+					document.querySelector('#install-cmd code').textContent = INSTALL_CMDS[/** @type {any} */ (btn).dataset.install];
+				});
+			});
+		</script>
+	</body>
+</html>

@@ -1,0 +1,59 @@
+name: Publish to npm
+
+# Manual only — it never runs on push, so it can never turn CI red by itself.
+# Publishes the dusrelimage JS package to npm via Trusted Publishing (GitHub
+# OIDC): no npm token is stored anywhere. The trusted publisher must be
+# configured once on npmjs.com (package dusrelimage > Settings > Trusted
+# Publishers > GitHub Actions): owner dusmamud, repo dusrelimage, workflow
+# file npm.yml, no environment. `npm publish --provenance` exchanges the
+# GitHub OIDC token for a short-lived npm token itself — that needs npm
+# >= 11.5.1, but Node 22 ships npm 10.9, so the workflow installs npm@11
+# explicitly (lesson from indycheck's first 0.2.2 attempt: npm 10 signed
+# the provenance statement but sent the publish PUT with a wrong token and
+# got 404). And setup-node defaults its `token` input to github.token — if
+# NODE_AUTH_TOKEN is set at all, npm skips the OIDC exchange, so the token
+# input is explicitly emptied below.
+on:
+  workflow_dispatch:
+
+jobs:
+  publish:
+    name: build + publish to npm (OIDC)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          registry-url: "https://registry.npmjs.org"
+          # setup-node defaults `token` to github.token; an explicit empty
+          # value keeps NODE_AUTH_TOKEN unset so npm does the OIDC exchange.
+          token: ""
+      - name: Install npm 11 (OIDC publish needs npm >= 11.5.1)
+        run: npm install -g npm@11
+      - name: install wasm-pack
+        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+      - name: build dist
+        working-directory: packages/js
+        run: |
+          npm ci
+          npm run build
+          npm pack --dry-run
+      - name: check version is new
+        working-directory: packages/js
+        run: |
+          version=$(node -e "console.log(require('./package.json').version)")
+          if npm view "dusrelimage@$version" version 2>/dev/null; then
+            echo "dusrelimage@$version is already on npm — nothing to publish"
+            exit 1
+          fi
+          echo "publishing dusrelimage@$version"
+      - name: publish to npm
+        working-directory: packages/js
+        run: npm publish --provenance --access public

@@ -1,0 +1,27 @@
+[package]
+name = "dusrelimage-wasm"
+version.workspace = true
+edition.workspace = true
+# license-file (not license.workspace) so wasm-pack finds the repo-root
+# LICENSE instead of warning that no LICENSE file exists.
+license-file = "../../LICENSE"
+repository.workspace = true
+authors.workspace = true
+description = "WASM bindings for dusrelimage — thin wrappers over the Rust core"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+dusrelimage = { path = "../dusrelimage" }
+serde = "1"
+serde_json = "1"
+serde-wasm-bindgen = "0.6"
+wasm-bindgen = "0.2"
+js-sys = "0.3"
+
+# wasm-opt (binaryen) cannot be downloaded in offline/sandboxed builds;
+# disabling it keeps `wasm-pack build` working without optimisation.
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = false

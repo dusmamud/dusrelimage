@@ -1,0 +1,89 @@
+name: Website
+
+# Build + check on every website change (push + PR). Deploy to Cloudflare
+# Pages only after the build job passes, and only on push to main.
+# Deploy uses the pre-built dist from the build job, so exactly what was
+# tested is what goes live. Secrets CLOUDFLARE_ACCOUNT_ID and
+# CLOUDFLARE_API_TOKEN must exist in the repo's GitHub Actions secrets,
+# and a Cloudflare Pages project named `dusrelimage` must exist.
+# NOTE: unlike dusrelpdf, this workflow DOES deploy — dusrelpdf's
+# website.yml was build-only, which left its site undeployed.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'website/**'
+      - '.github/workflows/website.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'website/**'
+      - '.github/workflows/website.yml'
+
+jobs:
+  build:
+    name: Astro Starlight build + checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # The site's prebuild step runs wasm-pack (build-wasm.mjs), so
+      # the Rust toolchain + wasm-pack are needed here too.
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: install wasm-pack
+        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+      - name: install
+        working-directory: website
+        run: npm ci
+      - name: build
+        working-directory: website
+        run: npm run build
+      - name: check pages
+        working-directory: website
+        run: |
+          test -f dist/index.html
+          test -f dist/sitemap-index.xml
+          test -f dist/playground/index.html
+          test -f dist/overview/index.html
+          test -f dist/changelog/index.html
+          test -f dist/reference/compress/index.html
+          test -f dist/reference/resize/index.html
+          test -f dist/reference/crop/index.html
+          test -f dist/reference/convert/index.html
+          test -f dist/reference/watermark/index.html
+          test -f dist/reference/annotate/index.html
+          test -f dist/reference/colour-picker/index.html
+          test -f dist/reference/palette/index.html
+          test -f dist/reference/collage/index.html
+          test -f dist/reference/pixelate/index.html
+          test -f dist/reference/info-and-bulk/index.html
+          echo "website pages OK"
+      - name: upload dist for deploy
+        if: github.event_name == 'push'
+        uses: actions/upload-artifact@v4
+        with:
+          name: website-dist
+          path: website/dist
+
+  deploy:
+    name: Deploy to Cloudflare Pages
+    needs: build
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: website-dist
+          path: website/dist
+      - name: deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy website/dist --project-name dusrelimage --commit-dirty=true

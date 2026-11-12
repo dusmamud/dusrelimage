@@ -1,0 +1,35 @@
+name: Publish to PyPI
+
+# Manual only — it never runs on push, so it can never turn CI red by itself.
+# Publishes the dusrelimage wheel to PyPI via Trusted Publishing (GitHub OIDC):
+# no API token is stored anywhere. The pending trusted publisher must be
+# configured once on PyPI (Account settings > Publishing > Add a new pending
+# publisher): GitHub, project name dusrelimage, owner dusmamud, repo
+# dusrelimage, workflow file pypi.yml, no environment. The first run creates
+# the project. Do NOT add a PYPI_API_TOKEN / password input — that would
+# disable OIDC.
+on:
+  workflow_dispatch:
+
+jobs:
+  publish:
+    name: build wheel + publish to PyPI (OIDC)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: install maturin
+        run: python -m pip install --upgrade pip maturin
+      - name: build wheel
+        working-directory: crates/dusrelimage-py
+        run: python -m maturin build --release
+      - name: publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: target/wheels

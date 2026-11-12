@@ -1,0 +1,69 @@
+---
+title: Comparison
+description: How dusrelimage compares with Sharp, Pillow, ImageMagick, Squoosh, Jimp, Intervention Image and Photon — and why one core in every language wins.
+---
+
+Research: 2026-11-12, all 10 tools checked against each package.
+
+## The short version
+
+**No package covers all 10 tools fully.** Only ImageMagick covers all 10
+at least partially — and only through CLI workarounds, not a real API.
+Palette extraction is dedicated nowhere. Collage is dedicated nowhere.
+Full annotation exists only in Intervention Image. Pixelation exists only
+in Jimp, Photon and Intervention. A colour picker exists only in
+Intervention.
+
+And every rival is locked to one language: Sharp is Node-only, Pillow is
+Python-only, Intervention Image is PHP-only. dusrelimage is **one Rust
+core in every language, offline, with the same answer everywhere**.
+
+## Tool-by-tool coverage
+
+| Tool | Sharp | Pillow | ImageMagick | Squoosh | Jimp | Intervention | Photon | dusrelimage |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Compress | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Resize | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Crop | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Convert | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Watermark | ✅ | partial | partial (CLI) | ❌ | ✅ | ✅ | ❌ | ✅ |
+| Annotate | ❌ | partial | partial (CLI) | ❌ | partial | ✅ full | ❌ | ✅ full |
+| Colour picker | ❌ | partial | partial (CLI) | ❌ | ❌ | ✅ | ❌ | ✅ |
+| Palette | ❌ | partial | partial (CLI) | ❌ | ❌ | ❌ | ❌ | ✅ |
+| Collage | ❌ | partial | partial (CLI) | ❌ | ❌ | ❌ | ❌ | ✅ |
+| Pixelate | ❌ | partial | partial (CLI) | ❌ | ✅ | ✅ | ✅ | ✅ |
+
+"Partial" means the job is possible with manual pixel work or a shell-out,
+not a first-class API. ImageMagick's rows are CLI workarounds, not library
+calls you can ship in an app.
+
+## What the rivals cannot do
+
+- **One core, every language.** Sharp (Node-only), Pillow (Python-only)
+  and Intervention (PHP-only) each solve one ecosystem. dusrelimage
+  ships the same Rust core to Rust, JavaScript/TypeScript, Python and
+  the CLI — and the same test vectors pass in all of them, so the same
+  input gives the same output everywhere.
+- **Offline, always.** No API keys, no uploads, no per-image fees. The
+  image never leaves the machine — not even to a "free" online tool.
+- **Bilingual errors.** Every failure carries a stable code plus
+  `message_en` and `message_hi`. No rival in this table does that.
+- **Bytes in, bytes out.** Every tool takes bytes and returns bytes, so
+  tools compose into pipelines in one line.
+- **No dedicated palette or collage anywhere else.** Extracting dominant
+  colours and building grids are first-class tools here, not scripts you
+  write yourself.
+
+## Honest limits of dusrelimage v0.1.0
+
+The comparison above is about the 10 tools, not about everything:
+
+- No HEIC support; AVIF encode is lossy-only / 8-bit; GIF encode is
+  first-frame only for animated input.
+- Whole image in memory, no streaming — very large images are refused
+  rather than processed slowly.
+- No GUI editor, no cloud storage, no AI upscaling. This is a toolkit,
+  not an app.
+- Sharp and Pillow have far larger ecosystems and plugin libraries;
+  dusrelimage v0.1.0 is a focused core, not a replacement for either
+  where you already depend on their plugins.

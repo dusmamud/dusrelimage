@@ -1,0 +1,85 @@
+---
+title: Annotate
+description: Draw arrows, rectangles, ellipses, lines and text on an image — raster drawing, in the core, no GUI needed.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Draw on an image: arrows, rectangles, ellipses, lines and text. Drawing
+is raster, implemented in the core — there is no GUI and no external
+editor involved, so the same annotations render identically in every
+language.
+
+## Function
+
+```rust
+annotate_image(input, &[Annotation]) -> Vec<u8>
+```
+
+| Language | Name |
+| --- | --- |
+| Rust | `annotate_image` |
+| JavaScript | `annotateImage` |
+| Python | `annotate_image` |
+| CLI | `dusrelimage annotate <input> --annotations annotations.json -o out.jpg` |
+
+## Annotation ops
+
+Coordinates are **absolute pixels** (not percentages). Colours are hex
+strings (`"#ff0000"`) or `{ r, g, b }` objects.
+
+| Op | Fields |
+| --- | --- |
+| `Arrow` | `from: [x, y]`, `to: [x, y]`, `colour`, `width` |
+| `Rect` | `x, y, w, h`, `colour`, `width`, `fill` (optional fill colour) |
+| `Ellipse` | `x, y, w, h` (bounding box), `colour`, `width`, `fill` (optional) |
+| `Line` | `from: [x, y]`, `to: [x, y]`, `colour`, `width` |
+| `Text` | `x, y`, `text`, `size`, `colour` |
+
+Ops draw in the order given — later ops paint over earlier ones. Text
+uses the bundled DejaVu Sans font.
+
+## Examples
+
+```js
+import { annotateImage } from 'dusrelimage';
+
+const out = annotateImage(input, [
+  { type: 'Arrow', from: [50, 50], to: [300, 200], colour: '#ff0000', width: 4 },
+  { type: 'Rect', x: 300, y: 100, w: 200, h: 120, colour: '#00ff00', width: 3 },
+  { type: 'Text', x: 300, y: 90, text: 'Look here', size: 28, colour: '#00ff00' },
+]);
+```
+
+```python
+from dusrelimage import annotate_image
+
+out = annotate_image(data, [
+    {"type": "Ellipse", "x": 100, "y": 100, "w": 150, "h": 150,
+     "colour": "#0000ff", "width": 3, "fill": "#0000ff22"},
+    {"type": "Line", "from": [0, 0], "to": [400, 400],
+     "colour": "#ff0000", "width": 2},
+])
+```
+
+```bash
+# annotations.json: [{ "type": "Arrow", "from": [50, 50], "to": [300, 200], "colour": "#ff0000", "width": 4 }]
+dusrelimage annotate photo.jpg --annotations annotations.json -o annotated.jpg
+```
+
+<Aside type="note" title="Full annotation, not a subset">
+  Full annotation — arrows, shapes and text together — is the tool most
+  rivals lack. In the 2026-11-12 research only Intervention Image offers
+  the full set; Sharp, Squoosh and Photon offer none of it. See
+  [Comparison](/comparison/).
+</Aside>
+
+## Errors
+
+| Code | When |
+| --- | --- |
+| `INVALID_IMAGE` | Input is not a decodable image. |
+| `INVALID_ARGUMENT` | Bad annotation (unknown op type, negative size, bad colour). |
+| `INVALID_TYPE` | A wrong value type reached the bindings layer. |
+| `IMAGE_TOO_LARGE` | Over `max_pixels` (default 120,000,000). |
+| `EMPTY_INPUT` | Empty input bytes. |

@@ -1,0 +1,565 @@
+---
+/**
+ * dusrelimage playground — run real image operations in the browser.
+ *
+ * The Rust core, compiled to WASM with wasm-pack (`--target web`), is
+ * lazy-loaded ONLY on this page, ONLY on first use, from
+ * `/wasm/dusrelimage_wasm.js` (built by `npm run build` via
+ * scripts/build-wasm.mjs). Files NEVER leave the browser: the WASM runs
+ * locally, and downloads are created with object URLs.
+ *
+ * WASM export names follow SPEC.md exactly (snake_case): compress_image,
+ * compress_to_size, resize_image, crop_image, convert_image,
+ * add_watermark, annotate_image, pick_colour, extract_palette,
+ * make_collage, pixelate_image, get_image_info. Options are passed as
+ * plain JS objects; the wrappers convert them. CI (wasm.yml) is the
+ * proof that these exports exist with these signatures.
+ *
+ * There is NO fallback here on purpose. If the WASM build is missing the
+ * page says so loudly — silently pretending to work would be worse.
+ */
+---
+
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>Playground — dusrelimage</title>
+		<meta
+			name="description"
+			content="Try dusrelimage in your browser: compress, resize, crop, convert, watermark, pixelate and more with the Rust core compiled to WebAssembly. Your files never leave the browser."
+		/>
+		<meta property="og:title" content="Playground — dusrelimage" />
+		<meta property="og:description" content="Run real image operations in your browser. No file leaves the page." />
+		<meta property="og:url" content="https://dusrelimage.pages.dev/playground/" />
+		<meta property="og:image" content="https://dusrelimage.pages.dev/og.svg" />
+		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+		<link rel="canonical" href="https://dusrelimage.pages.dev/playground/" />
+		<style>
+			:root { --bg: #0f172a; --card: #1e293b; --ink: #f8fafc; --muted: #94a3b8; --green: #22c55e; --red: #f87171; --amber: #fbbf24; --line: #334155; }
+			* { box-sizing: border-box; }
+			body { margin: 0; font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; background: var(--bg); color: var(--ink); line-height: 1.6; }
+			a { color: #4ade80; }
+			.wrap { max-width: 960px; margin: 0 auto; padding: 0 20px 64px; }
+			header { display: flex; justify-content: space-between; align-items: center; padding: 20px 0; }
+			.logo { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 1.25rem; color: var(--ink); text-decoration: none; }
+			.logo img { width: 32px; height: 32px; }
+			nav a { color: var(--muted); text-decoration: none; margin-left: 20px; font-weight: 600; }
+			nav a:hover { color: var(--ink); }
+			h1 { font-size: 2rem; margin: 24px 0 4px; }
+			.sub { color: var(--muted); margin: 0 0 24px; }
+			.panel { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 20px; margin-bottom: 16px; }
+			.panel h2 { font-size: 1.05rem; margin: 0 0 12px; }
+			label { display: block; font-weight: 600; margin: 12px 0 4px; }
+			label span { color: var(--muted); font-weight: 400; font-size: 0.9rem; }
+			input[type="file"], input[type="text"], input[type="number"], select, textarea { width: 100%; background: #020617; color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 11px 12px; font-size: 1rem; font-family: inherit; }
+			input[type="file"] { cursor: pointer; }
+			.row { display: flex; gap: 12px; flex-wrap: wrap; }
+			.row > div { flex: 1 1 200px; }
+			.tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+			.tabs button { background: var(--card); color: var(--ink); border: 1px solid var(--line); border-radius: 999px; padding: 9px 18px; cursor: pointer; font-weight: 600; font-size: 0.95rem; }
+			.tabs button[aria-pressed="true"] { background: var(--green); color: #052e12; border-color: var(--green); }
+			.btn { border: none; border-radius: 8px; padding: 13px 22px; font-weight: 700; cursor: pointer; font-size: 1rem; margin-top: 16px; }
+			.btn-primary { background: var(--green); color: #052e12; }
+			.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+			.filelist { margin: 10px 0 0; padding: 0; list-style: none; font-size: 0.95rem; color: var(--muted); }
+			.filelist li { padding: 2px 0; }
+			.result { margin-top: 16px; border-radius: 10px; padding: 16px; display: none; }
+			.result.show { display: block; }
+			.result.ok { background: #052e12; border: 1px solid #166534; }
+			.result.err { background: #450a0a; border: 1px solid #991b1b; }
+			.result .verdict { font-weight: 800; font-size: 1.05rem; }
+			.result .verdict.ok { color: var(--green); }
+			.result .verdict.err { color: var(--red); }
+			.result code { color: #e2e8f0; }
+			.result .reason-hi { color: var(--muted); }
+			.result a { display: inline-block; margin: 6px 10px 0 0; font-weight: 700; }
+			.result img { max-width: 100%; border-radius: 8px; margin-top: 12px; display: block; }
+			.preview img { max-width: 100%; max-height: 320px; border-radius: 8px; margin-top: 12px; display: block; }
+			.palette-swatch { display: inline-block; width: 44px; height: 44px; border-radius: 8px; margin: 6px 6px 0 0; border: 1px solid var(--line); vertical-align: middle; }
+			.engine { font-size: 0.85rem; color: var(--muted); margin-top: 12px; }
+			.note { background: #451a03; border: 1px solid #92400e; border-radius: 12px; padding: 16px 18px; margin-top: 32px; color: #fde68a; font-size: 0.95rem; }
+			.note a { color: #fcd34d; }
+			footer { margin-top: 48px; border-top: 1px solid var(--line); padding-top: 20px; color: var(--muted); font-size: 0.9rem; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+		</style>
+	</head>
+	<body>
+		<div class="wrap">
+			<header>
+				<a class="logo" href="/"><img src="/favicon.svg" alt="" /> dusrelimage</a>
+				<nav>
+					<a href="/guides/quickstart/">Docs</a>
+					<a href="/playground/">Playground</a>
+					<a href="https://github.com/dusmamud/dusrelimage">GitHub</a>
+				</nav>
+			</header>
+
+			<h1>Playground</h1>
+			<p class="sub">
+				Run real image operations in your browser — the same Rust core as the
+				package, compiled to WebAssembly. <strong>Your files never leave this
+				page:</strong> nothing is uploaded anywhere, and the result is
+				downloaded straight from your browser.
+			</p>
+
+			<div class="tabs" role="group" aria-label="Operation" id="tabs"></div>
+
+			<div class="panel">
+				<h2>1. Pick an image</h2>
+				<label for="file-input">Image file <span id="file-hint">(one file)</span></label>
+				<input id="file-input" type="file" accept="image/*" />
+				<ul class="filelist" id="file-list"></ul>
+				<div class="preview" id="preview"></div>
+				<p class="engine" id="info-line">No file loaded yet.</p>
+				<p>
+					No image handy?
+					<button type="button" id="mock-btn" style="background:none;border:none;color:#4ade80;cursor:pointer;padding:0;font-size:1rem;text-decoration:underline;">Generate a test image</button>
+					(a gradient, made in your browser — test data only).
+				</p>
+			</div>
+
+			<div class="panel" id="opts-panel">
+				<h2>2. Options</h2>
+				<div id="opts"></div>
+				<button type="button" class="btn btn-primary" id="run-btn" disabled>Run</button>
+				<p class="engine" id="engine">Engine: not loaded yet — it loads on first run.</p>
+			</div>
+
+			<div class="panel" id="out-panel" style="display:none">
+				<h2>3. Result</h2>
+				<div id="result" class="result" aria-live="polite"></div>
+			</div>
+
+			<div class="note">
+				<strong>Honest limits:</strong> the playground runs the real v0.1.0 core,
+				so the same limits apply — no HEIC, AVIF encode is lossy-only / 8-bit,
+				GIF encode is first-frame only for animated input, and the whole image
+				lives in memory.
+				<a href="/changelog/">Read the changelog →</a>
+			</div>
+
+			<footer>
+				<span>dusrelimage — open source, by dusmamud.</span>
+				<span><a href="/guides/quickstart/">Docs</a> · <a href="/">Home</a> · <a href="https://github.com/dusmamud/dusrelimage">GitHub</a></span>
+			</footer>
+		</div>
+
+		<script>
+			// ------------------------------------------------------------ WASM
+			// Lazy-loaded ONLY on this page, ONLY on first run.
+			// If the build is missing, this throws and we show a loud error —
+			// there is deliberately NO fallback that pretends to work.
+			let wasmModule = undefined; // undefined = not tried, null = failed
+			async function loadWasm() {
+				if (wasmModule !== undefined) {
+					if (wasmModule === null) throw new Error('WASM engine failed to load earlier — the playground build is missing. Re-run `npm run build` (it runs wasm-pack first).');
+					return wasmModule;
+				}
+				try {
+					const mod = await import(/* @vite-ignore */ '/wasm/dusrelimage_wasm.js');
+					await mod.default();
+					wasmModule = mod;
+					document.querySelector('#engine').textContent = `Engine: WASM (Rust core, dusrelimage ${mod.version()}).`;
+					return mod;
+				} catch (e) {
+					wasmModule = null;
+					document.querySelector('#engine').textContent = 'Engine: FAILED TO LOAD — the WASM build is missing. See the error below.';
+					throw new Error(`Could not load the WASM engine (/wasm/dusrelimage_wasm.js): ${e.message}. The playground needs \`npm run build\` (wasm-pack) first.`);
+				}
+			}
+
+			function parseThrown(e) {
+				// WASM errors are thrown as JSON strings:
+				// {"ok":false,"code":"...","message_en":"...","message_hi":"..."}
+				if (typeof e === 'string') {
+					try { return JSON.parse(e); } catch { return { code: 'OPERATION_FAILED', message_en: e, message_hi: '' }; }
+				}
+				if (e && e.message) return { code: 'OPERATION_FAILED', message_en: e.message, message_hi: '' };
+				return { code: 'OPERATION_FAILED', message_en: String(e), message_hi: '' };
+			}
+
+			// -------------------------------------------------------------- ops
+			const OPS = [
+				{ id: 'compress', label: 'Compress', multi: false, hint: '(one file)' },
+				{ id: 'resize', label: 'Resize', multi: false, hint: '(one file)' },
+				{ id: 'crop', label: 'Crop', multi: false, hint: '(one file)' },
+				{ id: 'convert', label: 'Convert', multi: false, hint: '(one file)' },
+				{ id: 'watermark', label: 'Watermark', multi: false, hint: '(one file)' },
+				{ id: 'pixelate', label: 'Pixelate', multi: false, hint: '(one file)' },
+				{ id: 'annotate', label: 'Annotate', multi: false, hint: '(one file)' },
+				{ id: 'pick-colour', label: 'Colour picker', multi: false, hint: '(one file)' },
+				{ id: 'palette', label: 'Palette', multi: false, hint: '(one file)' },
+				{ id: 'collage', label: 'Collage', multi: true, hint: '(two or more files, in order)' },
+			];
+
+			let currentOp = 'compress';
+			let files = []; // [{ name, bytes: Uint8Array }]
+
+			const $ = (s) => document.querySelector(s);
+			const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+			function renderTabs() {
+				const el = $('#tabs');
+				el.innerHTML = '';
+				for (const op of OPS) {
+					const b = document.createElement('button');
+					b.type = 'button';
+					b.textContent = op.label;
+					b.setAttribute('aria-pressed', String(op.id === currentOp));
+					b.addEventListener('click', () => setOp(op.id));
+					el.appendChild(b);
+				}
+			}
+
+			function optField(id, label, inner) {
+				return `<label for="${id}">${label}</label>${inner}`;
+			}
+
+			function renderOpts() {
+				const el = $('#opts');
+				const op = OPS.find((o) => o.id === currentOp);
+				$('#file-hint').textContent = op.hint;
+				$('#file-input').multiple = op.multi;
+				if (currentOp === 'compress') {
+					el.innerHTML = `
+						<div class="row"><div>${optField('opt-quality', 'Quality <span>1–100, default 80</span>',
+							'<input type="number" id="opt-quality" value="70" min="1" max="100" step="1" />')}</div>
+						<div>${optField('opt-target', 'Target size <span>optional, bytes — e.g. 204800 for 200 KB; blank = quality mode</span>',
+							'<input type="number" id="opt-target" placeholder="no target" min="1" step="1" />')}</div></div>`;
+				} else if (currentOp === 'resize') {
+					el.innerHTML = `
+						<div class="row"><div>${optField('opt-width', 'Width <span>px — blank to keep aspect from height/percent</span>',
+							'<input type="number" id="opt-width" value="800" min="1" step="1" />')}</div>
+						<div>${optField('opt-height', 'Height <span>px — blank = aspect locked</span>',
+							'<input type="number" id="opt-height" placeholder="auto" min="1" step="1" />')}</div></div>
+						<div class="row"><div>${optField('opt-percent', 'Percent <span>e.g. 50 = half size — use instead of width/height</span>',
+							'<input type="number" id="opt-percent" placeholder="no percent" min="1" step="1" />')}</div>
+						<div>${optField('opt-filter', 'Filter',
+							'<select id="opt-filter"><option value="Lanczos3" selected>Lanczos3 (sharpest)</option><option value="CatmullRom">CatmullRom</option><option value="Triangle">Triangle</option><option value="Gaussian">Gaussian</option><option value="Nearest">Nearest (pixel art)</option></select>')}</div></div>`;
+				} else if (currentOp === 'crop') {
+					el.innerHTML = `
+						<div class="row"><div>${optField('opt-x', 'X <span>left edge, px</span>',
+							'<input type="number" id="opt-x" value="0" min="0" step="1" />')}</div>
+						<div>${optField('opt-y', 'Y <span>top edge, px</span>',
+							'<input type="number" id="opt-y" value="0" min="0" step="1" />')}</div></div>
+						<div class="row"><div>${optField('opt-cw', 'Width <span>px</span>',
+							'<input type="number" id="opt-cw" value="400" min="1" step="1" />')}</div>
+						<div>${optField('opt-ch', 'Height <span>px</span>',
+							'<input type="number" id="opt-ch" value="300" min="1" step="1" />')}</div></div>
+						<p style="color: var(--muted); font-size: 0.9rem;">Or use an anchor preset instead of x/y — see <a href="/reference/crop/">Crop docs →</a></p>`;
+				} else if (currentOp === 'convert') {
+					el.innerHTML = `
+						<div class="row"><div>${optField('opt-format', 'Format',
+							'<select id="opt-format"><option value="WebP" selected>WebP</option><option value="Jpeg">JPEG</option><option value="Png">PNG</option><option value="Avif">AVIF</option><option value="Gif">GIF</option><option value="Bmp">BMP</option></select>')}</div>
+						<div>${optField('opt-cquality', 'Quality <span>1–100, lossy targets</span>',
+							'<input type="number" id="opt-cquality" value="80" min="1" max="100" step="1" />')}</div></div>`;
+				} else if (currentOp === 'watermark') {
+					el.innerHTML = `
+						<div class="row"><div>${optField('opt-text', 'Watermark text',
+							'<input type="text" id="opt-text" value="© dusrel" spellcheck="false" />')}</div>
+						<div>${optField('opt-opacity', 'Opacity <span>0.0–1.0</span>',
+							'<input type="number" id="opt-opacity" value="0.5" min="0" max="1" step="0.05" />')}</div></div>
+						<div class="row"><div>${optField('opt-size', 'Font size <span>px</span>',
+							'<input type="number" id="opt-size" value="36" min="6" max="200" step="1" />')}</div>
+						<div>${optField('opt-position', 'Position',
+							'<select id="opt-position"><option value="BottomRight" selected>Bottom right</option><option value="BottomLeft">Bottom left</option><option value="BottomCenter">Bottom centre</option><option value="TopLeft">Top left</option><option value="TopCenter">Top centre</option><option value="TopRight">Top right</option><option value="Center">Centre</option><option value="Tiled">Tiled</option></select>')}</div></div>`;
+				} else if (currentOp === 'pixelate') {
+					el.innerHTML = `
+						<div class="row"><div>${optField('opt-px', 'X <span>left edge, px</span>',
+							'<input type="number" id="opt-px" value="100" min="0" step="1" />')}</div>
+						<div>${optField('opt-py', 'Y <span>top edge, px</span>',
+							'<input type="number" id="opt-py" value="80" min="0" step="1" />')}</div></div>
+						<div class="row"><div>${optField('opt-pw', 'Width <span>px</span>',
+							'<input type="number" id="opt-pw" value="120" min="1" step="1" />')}</div>
+						<div>${optField('opt-ph', 'Height <span>px</span>',
+							'<input type="number" id="opt-ph" value="120" min="1" step="1" />')}</div></div>
+						${optField('opt-block', 'Block size <span>2–100 px</span>',
+							'<input type="number" id="opt-block" value="16" min="2" max="100" step="1" />')}`;
+				} else if (currentOp === 'annotate') {
+					el.innerHTML = optField('opt-annotations', 'Annotations <span>JSON array — Arrow, Rect, Ellipse, Line, Text</span>',
+						'<textarea id="opt-annotations" rows="5" spellcheck="false">[{"type":"Arrow","from":[50,50],"to":[300,200],"colour":"#ff0000","width":4},{"type":"Text","x":300,"y":90,"text":"Look here","size":28,"colour":"#ff0000"}]</textarea>');
+				} else if (currentOp === 'pick-colour') {
+					el.innerHTML = `
+						<div class="row"><div>${optField('opt-pickx', 'X <span>px, 0-based</span>',
+							'<input type="number" id="opt-pickx" value="120" min="0" step="1" />')}</div>
+						<div>${optField('opt-picky', 'Y <span>px, 0-based</span>',
+							'<input type="number" id="opt-picky" value="80" min="0" step="1" />')}</div></div>`;
+				} else if (currentOp === 'palette') {
+					el.innerHTML = optField('opt-count', 'Colours <span>1–16</span>',
+						'<input type="number" id="opt-count" value="5" min="1" max="16" step="1" />');
+				} else if (currentOp === 'collage') {
+					el.innerHTML = `
+						<div class="row"><div>${optField('opt-layout', 'Layout',
+							'<select id="opt-layout"><option value="2x2" selected>2×2 grid</option><option value="1x1">1×1</option><option value="3x3">3×3</option><option value="4x4">4×4</option><option value="row">Row</option><option value="column">Column</option></select>')}</div>
+						<div>${optField('opt-gap', 'Gap <span>px between cells</span>',
+							'<input type="number" id="opt-gap" value="8" min="0" step="1" />')}</div></div>
+						<div class="row"><div>${optField('opt-colw', 'Output width <span>px</span>',
+							'<input type="number" id="opt-colw" value="1200" min="1" step="1" />')}</div>
+						<div>${optField('opt-colh', 'Output height <span>px</span>',
+							'<input type="number" id="opt-colh" value="1200" min="1" step="1" />')}</div></div>`;
+				}
+				updateRunButton();
+			}
+
+			function setOp(id) {
+				currentOp = id;
+				renderTabs();
+				renderOpts();
+			}
+
+			function updateRunButton() {
+				$('#run-btn').disabled = files.length === 0;
+			}
+
+			function mimeFor(bytes, fallbackExt) {
+				// Best-effort sniff: PNG / JPEG / GIF / WebP magic bytes.
+				if (bytes[0] === 0x89 && bytes[1] === 0x50) return { mime: 'image/png', ext: 'png' };
+				if (bytes[0] === 0xff && bytes[1] === 0xd8) return { mime: 'image/jpeg', ext: 'jpg' };
+				if (bytes[0] === 0x47 && bytes[1] === 0x49) return { mime: 'image/gif', ext: 'gif' };
+				if (bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[8] === 0x57) return { mime: 'image/webp', ext: 'webp' };
+				return { mime: 'image/png', ext: fallbackExt || 'png' };
+			}
+
+			function downloadLink(bytes, filename, label) {
+				const { mime } = mimeFor(bytes);
+				const blob = new Blob([bytes], { type: mime });
+				const url = URL.createObjectURL(blob);
+				const a = document.createElement('a');
+				a.href = url;
+				a.download = filename;
+				a.textContent = label || filename;
+				return a;
+			}
+
+			function previewImage(bytes, container) {
+				const { mime } = mimeFor(bytes);
+				const blob = new Blob([bytes], { type: mime });
+				const url = URL.createObjectURL(blob);
+				const img = document.createElement('img');
+				img.src = url;
+				img.alt = 'Result preview';
+				container.innerHTML = '';
+				container.appendChild(img);
+			}
+
+			function showResult(ok, html) {
+				const r = $('#result');
+				$('#out-panel').style.display = 'block';
+				r.className = `result show ${ok ? 'ok' : 'err'}`;
+				r.innerHTML = html;
+			}
+
+			function showError(err) {
+				showResult(false, `
+					<div class="verdict err">✗ ${esc(err.code || 'OPERATION_FAILED')}</div>
+					<div>${esc(err.message_en || err.reason_en || '')}</div>
+					${err.message_hi || err.reason_hi ? `<div class="reason-hi">${esc(err.message_hi || err.reason_hi)}</div>` : ''}
+					<p style="color: var(--muted); font-size: 0.9rem;">See <a href="/guides/error-codes/">all error codes →</a></p>`);
+			}
+
+			async function refreshInfo() {
+				const preview = $('#preview');
+				preview.innerHTML = '';
+				if (files.length === 0) {
+					$('#info-line').textContent = 'No file loaded yet.';
+					return;
+				}
+				if (files.length === 1) previewImage(files[0].bytes, preview);
+				try {
+					const mod = await loadWasm();
+					if (files.length === 1) {
+						const info = JSON.parse(mod.get_image_info(files[0].bytes));
+						$('#info-line').textContent = `${files[0].name}: ${info.format}, ${info.width}×${info.height}, alpha: ${info.has_alpha}, ${info.file_size.toLocaleString()} bytes`;
+					} else {
+						$('#info-line').textContent = `${files.length} files selected for collage.`;
+					}
+				} catch (e) {
+					$('#info-line').textContent = files.length === 1
+						? `${files[0].name} — ${(files[0].bytes.length / 1024).toFixed(1)} KB (info will be checked when you run).`
+						: `${files.length} files selected for collage.`;
+				}
+			}
+
+			$('#file-input').addEventListener('change', async (ev) => {
+				files = [];
+				for (const f of ev.target.files) {
+					files.push({ name: f.name, bytes: new Uint8Array(await f.arrayBuffer()) });
+				}
+				const list = $('#file-list');
+				list.innerHTML = '';
+				for (const f of files) list.appendChild(Object.assign(document.createElement('li'), { textContent: `${f.name} — ${(f.bytes.length / 1024).toFixed(1)} KB` }));
+				updateRunButton();
+				await refreshInfo();
+			});
+
+			$('#mock-btn').addEventListener('click', async () => {
+				// Self-contained test image (canvas gradient) — no WASM needed,
+				// so this works even before the engine loads.
+				const canvas = document.createElement('canvas');
+				canvas.width = 800;
+				canvas.height = 600;
+				const ctx = canvas.getContext('2d');
+				const grad = ctx.createLinearGradient(0, 0, 800, 600);
+				grad.addColorStop(0, '#2b3a55');
+				grad.addColorStop(0.5, '#7fa3c7');
+				grad.addColorStop(1, '#e8e4da');
+				ctx.fillStyle = grad;
+				ctx.fillRect(0, 0, 800, 600);
+				ctx.fillStyle = '#c96f4a';
+				ctx.beginPath();
+				ctx.arc(400, 300, 120, 0, Math.PI * 2);
+				ctx.fill();
+				ctx.fillStyle = '#ffffff';
+				ctx.font = 'bold 48px sans-serif';
+				ctx.fillText('dusrelimage', 220, 320);
+				const blob = await new Promise((res) => canvas.toBlob(res, 'image/png'));
+				const bytes = new Uint8Array(await blob.arrayBuffer());
+				files = [{ name: 'test-gradient.png', bytes }];
+				const list = $('#file-list');
+				list.innerHTML = '';
+				list.appendChild(Object.assign(document.createElement('li'), { textContent: 'test-gradient.png — generated test image (800×600)' }));
+				updateRunButton();
+				await refreshInfo();
+			});
+
+			$('#run-btn').addEventListener('click', async () => {
+				if (files.length === 0) return;
+				const btn = $('#run-btn');
+				btn.disabled = true;
+				btn.textContent = 'Running…';
+				try {
+					const mod = await loadWasm();
+					const first = files[0];
+					if (currentOp === 'compress') {
+						const quality = parseInt($('#opt-quality')?.value || '70', 10);
+						const targetRaw = ($('#opt-target')?.value || '').trim();
+						let out;
+						let outName = 'compressed.jpg';
+						if (targetRaw) {
+							out = mod.compress_to_size(first.bytes, parseInt(targetRaw, 10), { quality });
+							outName = 'compressed-target.jpg';
+							showResult(true, `<div class="verdict ok">✓ Compressed to fit ${parseInt(targetRaw, 10).toLocaleString()} bytes</div><div>Output: ${out.length.toLocaleString()} bytes (was ${first.bytes.length.toLocaleString()}).</div>`);
+						} else {
+							out = mod.compress_image(first.bytes, { quality });
+							showResult(true, `<div class="verdict ok">✓ Compressed at quality ${quality}</div><div>Output: ${out.length.toLocaleString()} bytes (was ${first.bytes.length.toLocaleString()}).</div>`);
+						}
+						$('#result').appendChild(downloadLink(out, outName, `⬇ Download ${outName}`));
+						const pv = document.createElement('div');
+						$('#result').appendChild(pv);
+						previewImage(out, pv);
+					} else if (currentOp === 'resize') {
+						const wRaw = ($('#opt-width')?.value || '').trim();
+						const hRaw = ($('#opt-height')?.value || '').trim();
+						const pRaw = ($('#opt-percent')?.value || '').trim();
+						const filter = $('#opt-filter')?.value || 'Lanczos3';
+						const opts = { filter };
+						if (pRaw) opts.percent = parseFloat(pRaw);
+						else {
+							if (wRaw) opts.width = parseInt(wRaw, 10);
+							if (hRaw) opts.height = parseInt(hRaw, 10);
+						}
+						const out = mod.resize_image(first.bytes, opts);
+						showResult(true, `<div class="verdict ok">✓ Resized (${filter})</div><div>Output: ${out.length.toLocaleString()} bytes.</div>`);
+						$('#result').appendChild(downloadLink(out, 'resized.png', '⬇ Download resized.png'));
+						const pv = document.createElement('div');
+						$('#result').appendChild(pv);
+						previewImage(out, pv);
+					} else if (currentOp === 'crop') {
+						const out = mod.crop_image(first.bytes, {
+							x: parseInt($('#opt-x')?.value || '0', 10),
+							y: parseInt($('#opt-y')?.value || '0', 10),
+							width: parseInt($('#opt-cw')?.value || '400', 10),
+							height: parseInt($('#opt-ch')?.value || '300', 10),
+						});
+						showResult(true, `<div class="verdict ok">✓ Cropped</div><div>Output: ${out.length.toLocaleString()} bytes.</div>`);
+						$('#result').appendChild(downloadLink(out, 'cropped.png', '⬇ Download cropped.png'));
+						const pv = document.createElement('div');
+						$('#result').appendChild(pv);
+						previewImage(out, pv);
+					} else if (currentOp === 'convert') {
+						const format = $('#opt-format')?.value || 'WebP';
+						const quality = parseInt($('#opt-cquality')?.value || '80', 10);
+						const out = mod.convert_image(first.bytes, { format, quality });
+						const ext = format.toLowerCase() === 'jpeg' ? 'jpg' : format.toLowerCase();
+						showResult(true, `<div class="verdict ok">✓ Converted to ${esc(format)}</div><div>Output: ${out.length.toLocaleString()} bytes.</div>`);
+						$('#result').appendChild(downloadLink(out, `converted.${ext}`, `⬇ Download converted.${ext}`));
+						const pv = document.createElement('div');
+						$('#result').appendChild(pv);
+						previewImage(out, pv);
+					} else if (currentOp === 'watermark') {
+						const out = mod.add_watermark(first.bytes, {
+							text: { text: ($('#opt-text')?.value || '© dusrel').trim() || '© dusrel', size: parseInt($('#opt-size')?.value || '36', 10), colour: '#ffffff' },
+							opacity: parseFloat($('#opt-opacity')?.value || '0.5'),
+							position: $('#opt-position')?.value || 'BottomRight',
+						});
+						showResult(true, `<div class="verdict ok">✓ Watermarked</div><div>Output: ${out.length.toLocaleString()} bytes.</div>`);
+						$('#result').appendChild(downloadLink(out, 'watermarked.png', '⬇ Download watermarked.png'));
+						const pv = document.createElement('div');
+						$('#result').appendChild(pv);
+						previewImage(out, pv);
+					} else if (currentOp === 'pixelate') {
+						const out = mod.pixelate_image(first.bytes, {
+							x: parseInt($('#opt-px')?.value || '0', 10),
+							y: parseInt($('#opt-py')?.value || '0', 10),
+							width: parseInt($('#opt-pw')?.value || '120', 10),
+							height: parseInt($('#opt-ph')?.value || '120', 10),
+							block_size: parseInt($('#opt-block')?.value || '16', 10),
+						});
+						showResult(true, `<div class="verdict ok">✓ Pixelated</div><div>Output: ${out.length.toLocaleString()} bytes.</div>`);
+						$('#result').appendChild(downloadLink(out, 'pixelated.png', '⬇ Download pixelated.png'));
+						const pv = document.createElement('div');
+						$('#result').appendChild(pv);
+						previewImage(out, pv);
+					} else if (currentOp === 'annotate') {
+						let annotations;
+						try {
+							annotations = JSON.parse($('#opt-annotations')?.value || '[]');
+						} catch {
+							throw new Error('Annotations is not valid JSON.');
+						}
+						const out = mod.annotate_image(first.bytes, annotations);
+						showResult(true, `<div class="verdict ok">✓ Annotated (${annotations.length} op${annotations.length === 1 ? '' : 's'})</div><div>Output: ${out.length.toLocaleString()} bytes.</div>`);
+						$('#result').appendChild(downloadLink(out, 'annotated.png', '⬇ Download annotated.png'));
+						const pv = document.createElement('div');
+						$('#result').appendChild(pv);
+						previewImage(out, pv);
+					} else if (currentOp === 'pick-colour') {
+						const x = parseInt($('#opt-pickx')?.value || '0', 10);
+						const y = parseInt($('#opt-picky')?.value || '0', 10);
+						const c = JSON.parse(mod.pick_colour(first.bytes, x, y));
+						showResult(true, `<div class="verdict ok">✓ Pixel (${x}, ${y}) = ${esc(c.hex)}</div>
+							<div>RGB ${c.r}, ${c.g}, ${c.b} · alpha ${c.a} · HSL ${c.hsl.map((v) => Number(v).toFixed(2)).join(', ')}</div>
+							<div><span class="palette-swatch" style="background:${esc(c.hex)}"></span></div>`);
+					} else if (currentOp === 'palette') {
+						const count = parseInt($('#opt-count')?.value || '5', 10);
+						const palette = JSON.parse(mod.extract_palette(first.bytes, count));
+						const rows = palette.map((c) => `<div><span class="palette-swatch" style="background:${esc(c.hex)}"></span> <code>${esc(c.hex)}</code> — ${(c.share * 100).toFixed(1)}%</div>`).join('');
+						showResult(true, `<div class="verdict ok">✓ ${palette.length} dominant colours</div>${rows}`);
+					} else if (currentOp === 'collage') {
+						if (files.length < 2) throw new Error('Collage needs at least two files.');
+						const out = mod.make_collage(files.map((f) => f.bytes), {
+							layout: $('#opt-layout')?.value || '2x2',
+							gap: parseInt($('#opt-gap')?.value || '8', 10),
+							width: parseInt($('#opt-colw')?.value || '1200', 10),
+							height: parseInt($('#opt-colh')?.value || '1200', 10),
+						});
+						showResult(true, `<div class="verdict ok">✓ Collage from ${files.length} images</div><div>Output: ${out.length.toLocaleString()} bytes.</div>`);
+						$('#result').appendChild(downloadLink(out, 'collage.jpg', '⬇ Download collage.jpg'));
+						const pv = document.createElement('div');
+						$('#result').appendChild(pv);
+						previewImage(out, pv);
+					}
+				} catch (e) {
+					showError(parseThrown(e));
+				} finally {
+					btn.disabled = files.length === 0;
+					btn.textContent = 'Run';
+				}
+			});
+
+			renderTabs();
+			renderOpts();
+		</script>
+	</body>
+</html>

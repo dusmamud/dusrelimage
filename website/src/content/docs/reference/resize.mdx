@@ -1,0 +1,88 @@
+---
+title: Resize
+description: Change an image's dimensions by width, height or percent, with fit modes and resampling filters.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Change an image's width and/or height — by exact pixels or by percent —
+with control over how the aspect ratio is handled and which resampling
+filter is used.
+
+## Function
+
+```rust
+resize_image(input, &ResizeOptions) -> Vec<u8>
+```
+
+| Language | Name |
+| --- | --- |
+| Rust | `resize_image` |
+| JavaScript | `resizeImage` |
+| Python | `resize_image` |
+| CLI | `dusrelimage resize <input> --width 800 -o out.jpg` |
+
+## Options
+
+| Field | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `width` | u32 or null | `null` | Target width in pixels. |
+| `height` | u32 or null | `null` | Target height in pixels. |
+| `percent` | f32 or null | `null` | Scale by percent, e.g. `50` = half size. |
+| `fit` | FitMode | `Fit` | `Fit` / `Fill` / `Stretch` / `Crop` (see below). |
+| `filter` | Filter | `Lanczos3` | `Nearest` / `Triangle` / `CatmullRom` / `Gaussian` / `Lanczos3`. |
+| `background` | Colour | white | Fill colour used by `Fill` mode. |
+
+Give width, height, or `percent` — at least one is required. Giving
+only one of width/height keeps the aspect ratio (aspect lock). Giving
+neither is `INVALID_DIMENSIONS`.
+
+## Fit modes
+
+| Mode | Behaviour |
+| --- | --- |
+| `Fit` | Scale to fit inside the width × height box, keeping aspect ratio. The output may be smaller than the box on one side. |
+| `Fill` | Scale to fit inside the box, then centre on a `background` canvas of exactly the target size (letterbox). |
+| `Stretch` | Scale to exactly width × height, ignoring aspect ratio (image may look squashed). |
+| `Crop` | Scale then centre-crop to exactly width × height. |
+
+## Filters
+
+| Filter | Best for |
+| --- | --- |
+| `Lanczos3` (default) | Downscaling photos — sharpest result. |
+| `CatmullRom` | General-purpose, good balance. |
+| `Triangle` | Fast, decent quality. |
+| `Gaussian` | Softer, smooth result. |
+| `Nearest` | Pixel art / upscaling without blur — fastest and blockiest. |
+
+## Examples
+
+```js
+import { resizeImage } from 'dusrelimage';
+
+const thumb = resizeImage(input, { width: 400 });            // aspect locked
+const half = resizeImage(input, { percent: 50 });             // half size
+const exact = resizeImage(input, { width: 800, height: 800, fit: 'Crop' }); // square
+```
+
+```bash
+dusrelimage resize photo.jpg --width 800 -o photo-800.jpg
+dusrelimage resize photo.jpg --percent 50 -o photo-half.jpg
+dusrelimage resize photo.jpg --width 800 --height 800 --fit crop -o square.jpg
+```
+
+<Aside type="note" title="Upscaling">
+  Resizing larger than the original works, but it cannot add detail —
+  `Lanczos3`/`CatmullRom` give a smooth upscale, `Nearest` gives a
+  blocky one. There is no AI upscaling in v0.1.0.
+</Aside>
+
+## Errors
+
+| Code | When |
+| --- | --- |
+| `INVALID_IMAGE` | Input is not a decodable image. |
+| `INVALID_DIMENSIONS` | No width, height or percent given; a dimension is zero. |
+| `IMAGE_TOO_LARGE` | Over `max_pixels` (default 120,000,000), or a side exceeds `max_dimension` (default 16000). |
+| `EMPTY_INPUT` | Empty input bytes. |

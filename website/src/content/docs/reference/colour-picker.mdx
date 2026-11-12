@@ -1,0 +1,69 @@
+---
+title: Colour picker
+description: Read the exact colour of one pixel — hex, RGB and HSL.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Read the exact colour of a single pixel — as hex, RGB and HSL.
+
+## Function
+
+```rust
+pick_colour(input, x, y) -> Colour
+```
+
+| Language | Name |
+| --- | --- |
+| Rust | `pick_colour` |
+| JavaScript | `pickColour` |
+| Python | `pick_colour` |
+| CLI | `dusrelimage pick-colour <input> --x 120 --y 80` |
+
+## The Colour struct
+
+```ts
+type Colour = {
+  hex: string;        // "#RRGGBB"
+  r: number; g: number; b: number; a: number;  // 0–255 each
+  hsl: [number, number, number];               // hue 0–360, saturation 0–1, lightness 0–1
+};
+```
+
+## Examples
+
+```js
+import { pickColour } from 'dusrelimage';
+
+const c = pickColour(input, 120, 80);
+console.log(c.hex);  // "#3a7bd5"
+console.log(c.r, c.g, c.b); // 58 123 213
+console.log(c.hsl);  // [210, 0.6, 0.53]
+```
+
+```python
+from dusrelimage import pick_colour
+
+c = pick_colour(data, 120, 80)
+print(c["hex"], c["r"], c["g"], c["b"])
+```
+
+```bash
+$ dusrelimage pick-colour photo.jpg --x 120 --y 80
+{"hex":"#3A7BD5","r":58,"g":123,"b":213,"a":255,"hsl":[210.0,0.6,0.53]}
+```
+
+<Aside type="caution" title="Out of bounds is an error, not a guess">
+  Coordinates outside the image fail with `PIXEL_OUT_OF_BOUNDS` — the
+  picker never wraps around or clamps to the edge. Coordinates are
+  0-based: `(0, 0)` is the top-left pixel.
+</Aside>
+
+## Errors
+
+| Code | When |
+| --- | --- |
+| `INVALID_IMAGE` | Input is not a decodable image. |
+| `PIXEL_OUT_OF_BOUNDS` | `(x, y)` is outside the image. |
+| `IMAGE_TOO_LARGE` | Over `max_pixels` (default 120,000,000). |
+| `EMPTY_INPUT` | Empty input bytes. |

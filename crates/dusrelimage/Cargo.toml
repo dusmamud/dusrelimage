@@ -1,0 +1,38 @@
+[package]
+name = "dusrelimage"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+description = "Offline image toolkit — compress, resize, crop, convert, watermark, annotate, colour picker, palette, collage and pixelate. One Rust core, no network."
+readme = "../../README.md"
+keywords = ["image", "compress", "resize", "crop", "convert", "watermark"]
+categories = ["multimedia", "command-line-utilities"]
+
+[lib]
+name = "dusrelimage"
+path = "src/lib.rs"
+
+[dependencies]
+# >= 0.25.8: ImageDecoder::orientation() + DynamicImage::apply_orientation()
+# (native EXIF orientation, no separate exif crate needed).
+# Default features OFF: only the formats SPEC section 3 needs, pure Rust.
+# `avif` here is ENCODE only (ravif); AVIF *decoding* needs the
+# `avif-native` feature (libdav1d, C library) which v0.1.0 deliberately
+# does NOT enable — it would break the WASM build. AVIF input therefore
+# decodes to UNSUPPORTED_FORMAT; see common::decode_image.
+image = { version = "0.25.8", default-features = false, features = ["jpeg", "png", "webp", "gif", "bmp", "tiff", "avif"] }
+serde = { version = "1", features = ["derive"] }
+# Text rasterisation for the watermark / annotator (tools 5-6). Pure
+# Rust, WASM-safe; renders the bundled DejaVu Sans (assets/).
+ab_glyph = "0.2"
+
+[dev-dependencies]
+# Same minimal feature set as the library (default features would pull
+# exr/qoi/rayon/... into test builds via feature unification).
+image = { version = "0.25", default-features = false, features = ["jpeg", "png", "webp", "gif", "bmp", "tiff", "avif"] }
+# Only for tests/vectors.rs (loads shared/test-vectors.json).
+serde_json = "1"

@@ -82,8 +82,15 @@ and a full CLI.
 - **No streaming mode.** Whole images live in memory.
 - **Annotate / watermark text** uses one bundled open font
   (DejaVu Sans) — no system-font lookup.
-- EXIF is stripped by default unless `keep_exif` is set; only
+- EXIF is always stripped on output — `keep_exif`, `dpi` and
+  `progressive` are accepted but **not honoured** in v0.1.0 (the
+  underlying `image` 0.25 encoders expose no such switches); only
   orientation is read for auto-rotate.
+- AVIF input does not decode (`UNSUPPORTED_FORMAT`); AVIF output is
+  lossy-only / 8-bit. WebP output is always lossless.
+  `compress_to_size` searches quality only for JPEG/AVIF. TIFF input
+  decodes but falls back to PNG output. The SPEC §2 PNG `palette`
+  quantise flag is not implemented.
 
 See [SPEC.md](SPEC.md) for the full contract.
 

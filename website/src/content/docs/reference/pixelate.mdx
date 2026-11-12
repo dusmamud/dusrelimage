@@ -1,0 +1,73 @@
+---
+title: Pixelate
+description: Mosaic-blur a rectangle of an image with a block size — for faces, plates and private details.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Mosaic-blur a rectangle of an image — the standard way to hide a face,
+a number plate, or any private detail.
+
+## Function
+
+```rust
+pixelate_image(input, &PixelateOptions) -> Vec<u8>
+```
+
+| Language | Name |
+| --- | --- |
+| Rust | `pixelate_image` |
+| JavaScript | `pixelateImage` |
+| Python | `pixelate_image` |
+| CLI | `dusrelimage pixelate <input> --x 100 --y 80 --width 120 --height 120 --block-size 16 -o out.jpg` |
+
+## Options
+
+| Field | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `x`, `y` | u32 | `0` | Top-left of the rectangle, in pixels. |
+| `width`, `height` | u32 | `0` = to edge | Size of the rectangle; `0` means to the image edge. |
+| `block_size` | u32 | `10` | Mosaic block size in pixels, 2–100. Outside 2–100 → `INVALID_ARGUMENT`. |
+
+Only the rectangle is pixelated — the rest of the image is untouched.
+
+## How it works
+
+The rectangle is downscaled with a `Nearest` filter to one pixel per
+block, then upscaled with `Nearest` back to its original size. That
+gives the classic mosaic look, and it is fully reversible in the sense
+that the same input + options always give the same output.
+
+## Examples
+
+```js
+import { pixelateImage } from 'dusrelimage';
+
+// Hide a face
+const out = pixelateImage(input, { x: 100, y: 80, width: 120, height: 120, blockSize: 16 });
+
+// Coarser mosaic for a number plate
+const plate = pixelateImage(input, { x: 400, y: 300, width: 200, height: 50, blockSize: 24 });
+```
+
+```bash
+dusrelimage pixelate photo.jpg --x 100 --y 80 --width 120 --height 120 \
+  --block-size 16 -o private.jpg
+```
+
+<Aside type="caution" title="Pixelation is not encryption">
+  Pixelation hides a detail from a casual viewer, but a coarse mosaic
+  can sometimes be partially reversed by upscaling tools. For truly
+  sensitive material, crop the region out instead — see
+  [Crop](/reference/crop/).
+</Aside>
+
+## Errors
+
+| Code | When |
+| --- | --- |
+| `INVALID_IMAGE` | Input is not a decodable image. |
+| `INVALID_ARGUMENT` | Block size outside 2–100. |
+| `INVALID_ARGUMENT` | Block size outside 2–100, or the rectangle is outside the image. (Width/height `0` means to the image edge, not an error.) |
+| `IMAGE_TOO_LARGE` | Over `max_pixels` (default 120,000,000). |
+| `EMPTY_INPUT` | Empty input bytes. |

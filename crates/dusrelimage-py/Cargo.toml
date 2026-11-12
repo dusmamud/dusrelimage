@@ -1,0 +1,24 @@
+[package]
+name = "dusrelimage-py"
+version.workspace = true
+# PyO3 0.30 is edition-2024 clean (same as indycheck-py v0.2.2), so
+# this crate inherits the workspace edition — unlike dusrelpdf-py,
+# which stays on edition 2021 for PyO3 0.22.
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+description = "Python bindings for dusrelimage — thin PyO3 wrappers over the Rust core"
+publish = false
+
+[lib]
+name = "_native"
+crate-type = ["cdylib"]
+
+[dependencies]
+dusrelimage = { path = "../dusrelimage" }
+pyo3 = { version = "0.30", features = ["abi3-py310", "extension-module"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"

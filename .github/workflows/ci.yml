@@ -1,0 +1,77 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  rust:
+    name: Rust fmt / clippy / test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - name: fmt
+        run: cargo fmt --all -- --check
+      - name: clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+      - name: test
+        run: cargo test --workspace
+      - name: CLI smoke test
+        run: |
+          cargo run -q -p dusrelimage-cli -- --version
+          cargo run -q -p dusrelimage-cli -- mock --kind noise --width 256 --height 256 --seed 42 -o /tmp/mock.png
+          cargo run -q -p dusrelimage-cli -- info /tmp/mock.png
+          cargo run -q -p dusrelimage-cli -- resize /tmp/mock.png --width 128 -o /tmp/resized.png
+          cargo run -q -p dusrelimage-cli -- info /tmp/resized.png
+
+  js:
+    name: TypeScript wrapper
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: install wasm-pack
+        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+      - name: install
+        working-directory: packages/js
+        run: npm ci
+      - name: build + typecheck
+        working-directory: packages/js
+        run: |
+          npm run build
+          npm run typecheck
+      - name: test
+        working-directory: packages/js
+        run: npm test
+
+  python:
+    name: Python wrapper
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: test
+        run: |
+          python -m pip install --upgrade pip pytest
+          python -m pytest packages/python/tests -q
+
+  # Python (wheel build + pytest) is covered by .github/workflows/python.yml
+  # WASM build is covered by .github/workflows/wasm.yml
+  # Website build is covered by .github/workflows/website.yml

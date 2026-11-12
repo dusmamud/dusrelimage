@@ -1,0 +1,128 @@
+---
+title: Info & bulk
+description: get_image_info and bulk_process — inspect images and run one operation over many inputs without one bad file killing the batch.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Two helpers go with the 10 tools: inspect an image, and run one
+operation over many images at once.
+
+## get_image_info
+
+```rust
+get_image_info(input, &CommonOptions) -> ImageInfo
+```
+
+| Language | Name |
+| --- | --- |
+| Rust | `get_image_info` |
+| JavaScript | `getImageInfo` |
+| Python | `get_image_info` |
+| CLI | `dusrelimage info <input> --json` |
+
+### ImageInfo
+
+```ts
+type ImageInfo = {
+  format: string;       // "jpeg" | "png" | "webp" | "avif" | "gif" | "bmp" | "tiff"
+  width: number;        // pixels
+  height: number;       // pixels
+  has_alpha: boolean;   // does it carry transparency?
+  colour_type: string;  // e.g. "rgb8", "rgba8", "luma8"
+  file_size: number;    // input bytes
+};
+```
+
+### Examples
+
+```js
+import { getImageInfo } from 'dusrelimage';
+
+const info = getImageInfo(input);
+console.log(`${info.format} ${info.width}×${info.height}, alpha: ${info.has_alpha}`);
+```
+
+```bash
+$ dusrelimage info photo.jpg --json
+{"format":"jpeg","width":4000,"height":3000,"has_alpha":false,"colour_type":"rgb8","file_size":2456789}
+```
+
+## bulk_process
+
+```rust
+bulk_process(inputs: &[Vec<u8>], op: &BulkOp) -> Vec<BulkItemResult>
+```
+
+One call, one result per input, **same order**. A failure on one item is
+reported for that item only — it never aborts the batch.
+
+| Language | Name |
+| --- | --- |
+| Rust | `bulk_process` |
+| JavaScript | `bulkProcess` |
+| Python | `bulk_process` |
+| CLI | `dusrelimage compress *.jpg --quality 70` (shell glob; one result per file) |
+
+### BulkResult
+
+```ts
+type BulkResult = {
+  ok: boolean;
+  output?: Uint8Array;   // present when ok
+  error?: {              // present when !ok
+    code: string;        // e.g. "INVALID_IMAGE"
+    message_en: string;
+    message_hi: string;
+  };
+};
+```
+
+### Example
+
+```js
+import { bulkProcess } from 'dusrelimage';
+
+const results = bulkProcess(files, 'compress', { quality: 70 });
+results.forEach((r, i) => {
+  if (r.ok) writeFile(`out-${i}.jpg`, r.output);
+  else console.warn(`file ${i} failed: ${r.error.code} — ${r.error.message_en}`);
+});
+```
+
+```python
+from dusrelimage import bulk_process
+
+results = bulk_process(files, "resize", {"width": 800})
+good = [r["output"] for r in results if r["ok"]]
+bad = [(i, r["error"]["code"]) for i, r in enumerate(results) if not r["ok"]]
+```
+
+## mock — generate test images
+
+The CLI's `mock` subcommand generates deterministic test images (solid,
+gradient, or photo-like noise) so you can try the tools with no download:
+
+```bash
+dusrelimage mock --kind gradient -o test.png
+dusrelimage mock --kind solid --width 800 --height 600 -o solid.png
+dusrelimage mock --kind noise --seed 42 -o noise.png
+```
+
+Fixtures for the shared test vectors (`shared/test-vectors.json`) are
+generated this way with a fixed seed — never committed as binary blobs
+(except 2 tiny PNGs, under 50 KB total).
+
+<Aside type="note" title="Partial failure is the point">
+  `bulk_process` exists so a batch job over user uploads does not die on
+  one corrupt file. If you need all-or-nothing behaviour, check every
+  result's `ok` flag yourself and abort — the core will not do it for you.
+</Aside>
+
+## Errors
+
+| Code | When |
+| --- | --- |
+| `INVALID_IMAGE` | `get_image_info` on undecodable input. |
+| `IMAGE_TOO_LARGE` | Over `max_pixels` (default 120,000,000). |
+| `EMPTY_INPUT` | Empty input bytes. (An empty input list for `bulk_process` is not an error — it returns an empty result list.) |

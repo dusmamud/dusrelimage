@@ -1,0 +1,83 @@
+---
+title: Collage
+description: Combine several images into one grid, row or column — with gaps, background and per-cell fit.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Combine several images into one picture — a grid, a row, or a column.
+
+## Function
+
+```rust
+make_collage(inputs: &[Vec<u8>], &CollageOptions) -> Vec<u8>
+```
+
+| Language | Name |
+| --- | --- |
+| Rust | `make_collage` |
+| JavaScript | `makeCollage` |
+| Python | `make_collage` |
+| CLI | `dusrelimage collage a.jpg b.jpg c.jpg d.jpg --layout 2x2 -o collage.jpg` |
+
+## Options
+
+| Field | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `layout` | CollageLayout | `grid` | `grid` (with a size `1x1` … `4x4`), `row`, or `column`. |
+| `gap` | u32 | `8` | Gap between cells, in pixels. |
+| `background` | Colour | white | Colour behind the cells and in the gaps. |
+| `width`, `height` | u32 | `1200` | Output canvas size in pixels. |
+| `cell_fit` | FitMode | `Fit` | How each image fits its cell — same modes as [Resize](/reference/resize/): `Fit` / `Fill` / `Stretch` / `Crop`. |
+
+Images fill the cells in the order given, left to right, top to bottom.
+For a `2x2` grid, pass 4 images; for `row`/`column`, one per cell.
+Extra cells are left as `background`; too many images for the layout is
+`INVALID_ARGUMENT`.
+
+Output is always PNG.
+
+## Examples
+
+```js
+import { makeCollage } from 'dusrelimage';
+
+// 2×2 grid, 1200×1200, 8 px gaps
+const out = makeCollage([a, b, c, d], {
+  layout: '2x2', gap: 8, background: '#ffffff',
+  width: 1200, height: 1200, cellFit: 'Fill',
+});
+
+// Before / after, side by side
+const compare = makeCollage([before, after], {
+  layout: 'row', gap: 4, width: 1600, height: 800,
+});
+```
+
+```python
+from dusrelimage import make_collage
+
+out = make_collage([a, b, c, d], layout="2x2", gap=8,
+                   width=1200, height=1200, cell_fit="fill")
+```
+
+```bash
+dusrelimage collage a.jpg b.jpg c.jpg d.jpg --layout 2x2 --gap 8 \
+  --width 1200 --height 1200 -o collage.jpg
+```
+
+<Aside type="note" title="Masonry is out of scope">
+  `masonry` (uneven, Pinterest-style packing) is **not** in v0.1.0 —
+  the layouts are `grid` (`1x1`–`4x4`), `row` and `column` only. It is a
+  candidate for a later release.
+</Aside>
+
+## Errors
+
+| Code | When |
+| --- | --- |
+| `INVALID_IMAGE` | Any input is not a decodable image. |
+| `INVALID_ARGUMENT` | Bad layout, or more images than the layout has cells. |
+| `INVALID_DIMENSIONS` | Output width/height is zero or exceeds `max_dimension`. |
+| `IMAGE_TOO_LARGE` | Any input (or the output) over `max_pixels`. |
+| `EMPTY_INPUT` | No input images given. |

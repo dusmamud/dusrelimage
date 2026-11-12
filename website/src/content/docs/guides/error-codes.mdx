@@ -1,0 +1,88 @@
+---
+title: Error codes
+description: Every dusrelimage error code, what it means, and the English + Hindi message it carries.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Every public function returns a `Result` and never panics on bad input. On
+failure you get a `DusrelError` with three things:
+
+- **`code`** — a stable, machine-readable string. Branch on this, never on
+  the message text.
+- **`message_en`** — a human-readable message in English.
+- **`message_hi`** — the same message in Hindi (Roman-script
+  Hinglish, as written in `crates/dusrelimage/src/error.rs` — not
+  Devanagari). The wordings in the table below match the code
+  exactly; `{detail}` / `{format}` / `{w}` / `{h}` / `{pixels}` /
+  `{max_pixels}` / `{max_dimension}` / `{target}` / `{smallest}` /
+  `{x}` / `{y}` / `{q}` / `{what}` are filled in per failure.
+
+In Rust the error is returned as a `DusrelError`; in JavaScript it is
+thrown as a `DusrelError` (an `Error` subclass with `.code`, `.messageEn`
+and `.messageHi`); in Python it is raised as a `DusrelError` (with `.code`,
+`.message_en` and `.message_hi`). The codes are identical in every
+language. (The raw WASM exports throw the same failure as a JSON string —
+the JavaScript and Python wrappers convert it into the typed error.)
+
+## The codes
+
+| Code | When it happens | `message_en` | `message_hi` |
+| --- | --- | --- | --- |
+| `INVALID_IMAGE` | Input bytes are not an image, are truncated, or cannot be decoded. | `Invalid image: {detail}` | `Galat image hai: {detail}` |
+| `UNSUPPORTED_FORMAT` | The image format is recognised but not supported for this operation (e.g. AVIF input, or an encode target the encoder cannot write). | `Unsupported image format: {format}.` | `Ye image format support nahi hai: {format}.` |
+| `IMAGE_TOO_LARGE` | The image has more pixels than `CommonOptions.max_pixels` (default 120,000,000), or a side longer than `max_dimension` (default 16000). | `Image is too large: {w}x{h} ({pixels} pixels) exceeds the limit of {max_pixels} pixels / {max_dimension} px per side.` | `Image bahut badi hai: {w}x{h} ({pixels} pixels) limit se zyada hai — {max_pixels} pixels / {max_dimension} px per side.` |
+| `TARGET_SIZE_UNREACHABLE` | `compress_to_size` could not reach the target — even the lowest quality still exceeds it. | `Target size of {target} bytes cannot be reached: even the lowest quality produces {smallest} bytes.` | `Target size {target} bytes tak nahi pahunch sakte: sabse low quality par bhi {smallest} bytes bante hain.` |
+| `CROP_OUT_OF_BOUNDS` | The crop rectangle sticks out of the image. | `Crop rectangle ({x}, {y}, {w}x{h}) is outside the image ({iw}x{ih}).` | `Crop rectangle ({x}, {y}, {w}x{h}) image ({iw}x{ih}) se bahar hai.` |
+| `PIXEL_OUT_OF_BOUNDS` | The picked pixel is outside the image. | `Pixel ({x}, {y}) is outside the image ({w}x{h}).` | `Pixel ({x}, {y}) image ({w}x{h}) se bahar hai.` |
+| `INVALID_QUALITY` | Quality is outside 1–100. (A WebP effort outside 0–6 is `INVALID_ARGUMENT`, not this code; there is no user-facing PNG level option.) | `Quality {q} is invalid. Quality must be between 1 and 100.` | `Quality {q} galat hai. Quality 1 se 100 ke beech honi chahiye.` |
+| `INVALID_DIMENSIONS` | A width/height is zero or missing where required. (A side longer than `max_dimension` is `IMAGE_TOO_LARGE`, not this code.) | `Invalid dimensions: {detail}` | `Galat dimensions hain: {detail}` |
+| `INVALID_ARGUMENT` | A bad argument: opacity outside 0–1, block size outside 2–100, effort outside 0–6, watermark with neither `text` nor `logo`, a bad collage layout, an unreadable input file (CLI). Text and logo may be combined — only "neither" is an error. | Varies by call | Varies by call |
+| `EMPTY_INPUT` | An input list or byte buffer is empty where at least one item is required (no collage inputs, empty image bytes). | `{what} is empty.` | `{what} khaali hai.` |
+| `INVALID_TYPE` | A wrong value type reached a typed API (bindings layer). | `Invalid type: {detail}` | `Galat type hai: {detail}` |
+
+<Aside type="note" title="Branch on code, never on text">
+  The `message_en` / `message_hi` wording may gain detail in a later
+  release; the `code` values are stable. `bulk_process` never fails the
+  whole batch — a per-item failure is reported with its own code (see
+  [Info & bulk](/reference/info-and-bulk/)).
+</Aside>
+
+## Examples
+
+```rust
+use dusrelimage::{crop_image, CropOptions};
+
+match crop_image(&img, &CropOptions { x: 900, y: 0, width: 200, height: 200, ..Default::default() }) {
+    Ok(out) => std::fs::write("cropped.png", out)?,
+    Err(e) => {
+        // e.code == "CROP_OUT_OF_BOUNDS"
+        // e.message_en == "Crop rectangle (900, 0, 200x200) is outside the image (800x600)."
+        eprintln!("{e}");
+    }
+}
+```
+
+```js
+import { compressToSize, DusrelError } from 'dusrelimage';
+
+try {
+  compressToSize(img, 10 * 1024); // 10 KB — probably unreachable for a photo
+} catch (e) {
+  if (e instanceof DusrelError && e.code === 'TARGET_SIZE_UNREACHABLE') {
+    console.log(e.messageEn); // English
+    console.log(e.messageHi); // Hindi
+  }
+}
+```
+
+```python
+from dusrelimage import pick_colour, DusrelError
+
+try:
+    pick_colour(img, 9999, 0)
+except DusrelError as e:
+    assert e.code == "PIXEL_OUT_OF_BOUNDS"
+    print(e.message_en)
+    print(e.message_hi)
+```

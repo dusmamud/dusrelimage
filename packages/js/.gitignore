@@ -1,0 +1,4 @@
+# Build artifacts — rebuilt by `npm run build` (wasm-pack + tsc).
+wasm-pkg/
+dist/
+node_modules/
