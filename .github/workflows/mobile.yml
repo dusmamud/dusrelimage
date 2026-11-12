@@ -1,0 +1,187 @@
+# Mobile bindings: Android (Kotlin/UniFFI) + Swift (iOS/macOS, UniFFI).
+# No secrets are used anywhere in this file.
+name: Mobile
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "packages/android/**"
+      - "packages/swift/**"
+      - "crates/dusrelimage-uniffi/**"
+      - "crates/dusrelimage/**"
+      - ".github/workflows/mobile.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "packages/android/**"
+      - "packages/swift/**"
+      - "crates/dusrelimage-uniffi/**"
+      - "crates/dusrelimage/**"
+      - ".github/workflows/mobile.yml"
+
+jobs:
+  android:
+    name: Android (JNI .so + Kotlin unit tests)
+    runs-on: ubuntu-latest
+    env:
+      # Host cdylib for the JVM unit tests (see lib/build.gradle.kts).
+      DUSRELIMAGE_UNIFFI_LIB: ${{ github.workspace }}/target/release/libdusrelimage_uniffi.so
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android, armv7-linux-androideabi, x86_64-linux-android
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Install cargo-ndk
+        # Pinned to the latest 4.x verified on crates.io (2026-11-12).
+        run: cargo install cargo-ndk --version 4.1.2 --locked
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          cmdline-tools-version: 11076708
+
+      - name: Install SDK packages
+        run: |
+          sdkmanager "platforms;android-34" "build-tools;34.0.0" "ndk;26.3.11579264"
+          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/26.3.11579264" >> "$GITHUB_ENV"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.11.1"
+
+      # The JVM unit tests load the HOST cdylib (not the Android .so),
+      # and the Kotlin freshness check below regenerates bindings from
+      # the .udl — both need the uniffi crate to build first.
+      - name: Build host cdylib (JVM unit tests)
+        run: cargo build -p dusrelimage-uniffi --release
+
+      - name: Check the host cdylib exports the contract
+        run: |
+          nm -D "$DUSRELIMAGE_UNIFFI_LIB" | grep -q " uniffi_dusrelimage_uniffi_fn_func_compress_image$"
+          nm -D "$DUSRELIMAGE_UNIFFI_LIB" | grep -q " uniffi_dusrelimage_uniffi_fn_func_compress_to_size$"
+          nm -D "$DUSRELIMAGE_UNIFFI_LIB" | grep -q " uniffi_dusrelimage_uniffi_fn_func_resize_image$"
+          nm -D "$DUSRELIMAGE_UNIFFI_LIB" | grep -q " uniffi_dusrelimage_uniffi_fn_func_crop_image$"
+          nm -D "$DUSRELIMAGE_UNIFFI_LIB" | grep -q " uniffi_dusrelimage_uniffi_fn_func_convert_image$"
+          nm -D "$DUSRELIMAGE_UNIFFI_LIB" | grep -q " uniffi_dusrelimage_uniffi_fn_func_add_watermark$"
+          nm -D "$DUSRELIMAGE_UNIFFI_LIB" | grep -q " uniffi_dusrelimage_uniffi_fn_func_annotate_image$"
+          nm -D "$DUSRELIMAGE_UNIFFI_LIB" | grep -q " uniffi_dusrelimage_uniffi_fn_func_pick_colour$"
+          nm -D "$DUSRELIMAGE_UNIFFI_LIB" | grep -q " uniffi_dusrelimage_uniffi_fn_func_extract_palette$"
+          nm -D "$DUSRELIMAGE_UNIFFI_LIB" | grep -q " uniffi_dusrelimage_uniffi_fn_func_make_collage$"
+          nm -D "$DUSRELIMAGE_UNIFFI_LIB" | grep -q " uniffi_dusrelimage_uniffi_fn_func_pixelate_image$"
+          nm -D "$DUSRELIMAGE_UNIFFI_LIB" | grep -q " uniffi_dusrelimage_uniffi_fn_func_get_image_info$"
+          nm -D "$DUSRELIMAGE_UNIFFI_LIB" | grep -q " uniffi_dusrelimage_uniffi_fn_func_bulk_process$"
+
+      # The checked-in Kotlin is generated from the .udl — if the .udl
+      # (or uniffi.toml) changed without regenerating, this fails.
+      # uniffi-bindgen is the in-crate binary, so it always matches
+      # the pinned uniffi 0.29.5; generation runs --no-format because
+      # ktlint is not installed here, and the checked-in file was
+      # generated the same way (see packages/android/README.md).
+      - name: Check generated Kotlin is fresh
+        run: |
+          mkdir -p /tmp/kotlin-fresh
+          cargo run -q -p dusrelimage-uniffi --bin uniffi-bindgen -- generate \
+            --language kotlin --no-format --out-dir /tmp/kotlin-fresh \
+            crates/dusrelimage-uniffi/src/dusrelimage.udl
+          diff -r /tmp/kotlin-fresh/com/dusrel/image packages/android/lib/src/main/kotlin/com/dusrel/image \
+            --exclude='DusrelImage.kt' || (echo "Generated Kotlin is stale: regenerate with the command in packages/android/README.md and commit the result." && exit 1)
+
+      - name: Build JNI .so for the three ABIs
+        run: bash packages/android/scripts/build-jni.sh
+
+      - name: Check the JNI .so files exist
+        run: |
+          for abi in arm64-v8a armeabi-v7a x86_64; do
+            test -f "packages/android/lib/src/main/jniLibs/$abi/libdusrelimage_uniffi.so" || (echo "missing .so for $abi" && exit 1)
+          done
+
+      - name: Kotlin unit tests (shared vectors + wrapper tests)
+        working-directory: packages/android
+        run: gradle :lib:testDebugUnitTest
+
+  swift:
+    name: Swift (macOS dylib + SwiftPM build + tests)
+    runs-on: macos-latest
+    env:
+      # Host cdylib for the SwiftPM tests (see packages/swift/README.md).
+      DUSRELIMAGE_UNIFFI_LIB: ${{ github.workspace }}/target/release/libdusrelimage_uniffi.dylib
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Show Swift version
+        run: swift --version
+
+      # The SwiftPM tests load the HOST cdylib (not an iOS library),
+      # and the Swift freshness check below regenerates bindings from
+      # the .udl — both need the uniffi crate to build first.
+      - name: Build host cdylib (SwiftPM tests)
+        run: cargo build -p dusrelimage-uniffi --release
+
+      - name: Check the host cdylib exports the contract
+        run: |
+          nm -g "$DUSRELIMAGE_UNIFFI_LIB" | grep -q " _uniffi_dusrelimage_uniffi_fn_func_compress_image$"
+          nm -g "$DUSRELIMAGE_UNIFFI_LIB" | grep -q " _uniffi_dusrelimage_uniffi_fn_func_compress_to_size$"
+          nm -g "$DUSRELIMAGE_UNIFFI_LIB" | grep -q " _uniffi_dusrelimage_uniffi_fn_func_resize_image$"
+          nm -g "$DUSRELIMAGE_UNIFFI_LIB" | grep -q " _uniffi_dusrelimage_uniffi_fn_func_crop_image$"
+          nm -g "$DUSRELIMAGE_UNIFFI_LIB" | grep -q " _uniffi_dusrelimage_uniffi_fn_func_convert_image$"
+          nm -g "$DUSRELIMAGE_UNIFFI_LIB" | grep -q " _uniffi_dusrelimage_uniffi_fn_func_add_watermark$"
+          nm -g "$DUSRELIMAGE_UNIFFI_LIB" | grep -q " _uniffi_dusrelimage_uniffi_fn_func_annotate_image$"
+          nm -g "$DUSRELIMAGE_UNIFFI_LIB" | grep -q " _uniffi_dusrelimage_uniffi_fn_func_pick_colour$"
+          nm -g "$DUSRELIMAGE_UNIFFI_LIB" | grep -q " _uniffi_dusrelimage_uniffi_fn_func_extract_palette$"
+          nm -g "$DUSRELIMAGE_UNIFFI_LIB" | grep -q " _uniffi_dusrelimage_uniffi_fn_func_make_collage$"
+          nm -g "$DUSRELIMAGE_UNIFFI_LIB" | grep -q " _uniffi_dusrelimage_uniffi_fn_func_pixelate_image$"
+          nm -g "$DUSRELIMAGE_UNIFFI_LIB" | grep -q " _uniffi_dusrelimage_uniffi_fn_func_get_image_info$"
+          nm -g "$DUSRELIMAGE_UNIFFI_LIB" | grep -q " _uniffi_dusrelimage_uniffi_fn_func_bulk_process$"
+
+      # The checked-in Swift is generated from the .udl — if the .udl
+      # (or uniffi.toml) changed without regenerating, this fails.
+      # uniffi-bindgen is the in-crate binary, so it always matches
+      # the pinned uniffi 0.29.5; generation runs --no-format because
+      # no Swift formatter is installed here, and the checked-in files
+      # were generated the same way (see packages/swift/README.md).
+      # The modulemap is checked in as `module.modulemap` (SPM
+      # system-library targets require that name); the bindgen output
+      # file is `dusrelimageFFI.modulemap` with identical content.
+      - name: Check generated Swift is fresh
+        run: |
+          mkdir -p /tmp/swift-fresh
+          cargo run -q -p dusrelimage-uniffi --bin uniffi-bindgen -- generate \
+            --language swift --no-format --out-dir /tmp/swift-fresh \
+            crates/dusrelimage-uniffi/src/dusrelimage.udl
+          diff /tmp/swift-fresh/dusrelimage.swift packages/swift/Sources/DusrelImage/dusrelimage.swift
+          diff /tmp/swift-fresh/dusrelimageFFI.h packages/swift/Sources/dusrelimageFFI/dusrelimageFFI.h
+          diff /tmp/swift-fresh/dusrelimageFFI.modulemap packages/swift/Sources/dusrelimageFFI/module.modulemap \
+            || (echo "Generated Swift is stale: regenerate with the command in packages/swift/README.md and commit the result." && exit 1)
+
+      # The cdylib is built from the uniffi crate in CI and never
+      # committed; the Swift target links it via
+      # `.linkedLibrary("dusrelimage_uniffi")` in Package.swift, so
+      # the search path is passed here and the runtime path is set so
+      # the test executable finds the .dylib when it runs.
+      - name: Swift build
+        working-directory: packages/swift
+        env:
+          DYLD_LIBRARY_PATH: ${{ github.workspace }}/target/release
+        run: swift build -Xlinker -L${{ github.workspace }}/target/release
+
+      - name: Swift tests (shared vectors + wrapper tests)
+        working-directory: packages/swift
+        env:
+          DYLD_LIBRARY_PATH: ${{ github.workspace }}/target/release
+        run: swift test -Xlinker -L${{ github.workspace }}/target/release
