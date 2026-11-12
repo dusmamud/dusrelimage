@@ -25,11 +25,7 @@ name = "dusrelimage-wasm"
 release = false
 publish = false
 
-[changelog]
-body = """
-## [{{ version }}]
-
-### Added
-
-- {{ changes }}
-"""
+# No custom [changelog] body: release-plz 0.4.3's `update` context
+# provides neither {{ date }} nor {{ changes }} for a custom body
+# template (both failed in CI), so the default changelog format is
+# used. indycheck's release-plz.toml has no custom body either.
