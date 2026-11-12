@@ -1,0 +1,6 @@
+# Composer install output (never committed).
+/vendor/
+# Built native library (built by scripts/build-ffi.sh, never committed).
+/lib/
+# PHPUnit run cache.
+.phpunit.result.cache

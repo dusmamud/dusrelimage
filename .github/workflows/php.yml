@@ -1,0 +1,71 @@
+name: PHP FFI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "packages/php/**"
+      - "crates/dusrelimage-ffi/**"
+      - "crates/dusrelimage/**"
+      - ".github/workflows/php.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "packages/php/**"
+      - "crates/dusrelimage-ffi/**"
+      - "crates/dusrelimage/**"
+      - ".github/workflows/php.yml"
+
+jobs:
+  php:
+    name: cargo build FFI cdylib + composer install + phpunit
+    runs-on: ubuntu-latest
+    env:
+      DUSRELIMAGE_FFI_LIB: ${{ github.workspace }}/packages/php/lib/libdusrelimage_ffi.so
+      DUSRELIMAGE_CLI: ${{ github.workspace }}/target/release/dusrelimage
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: setup PHP 8.2 + ffi
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.2"
+          extensions: ffi, json, zlib
+          tools: composer
+          coverage: none
+      - name: build FFI cdylib + CLI binary
+        run: bash packages/php/scripts/build-ffi.sh
+      - name: check the shared library exports the contract
+        run: |
+          nm -D packages/php/lib/libdusrelimage_ffi.so | grep -q " dusrelimage_compress$"
+          nm -D packages/php/lib/libdusrelimage_ffi.so | grep -q " dusrelimage_compress_to_size$"
+          nm -D packages/php/lib/libdusrelimage_ffi.so | grep -q " dusrelimage_resize$"
+          nm -D packages/php/lib/libdusrelimage_ffi.so | grep -q " dusrelimage_crop$"
+          nm -D packages/php/lib/libdusrelimage_ffi.so | grep -q " dusrelimage_convert$"
+          nm -D packages/php/lib/libdusrelimage_ffi.so | grep -q " dusrelimage_add_watermark$"
+          nm -D packages/php/lib/libdusrelimage_ffi.so | grep -q " dusrelimage_annotate$"
+          nm -D packages/php/lib/libdusrelimage_ffi.so | grep -q " dusrelimage_pick_colour$"
+          nm -D packages/php/lib/libdusrelimage_ffi.so | grep -q " dusrelimage_extract_palette$"
+          nm -D packages/php/lib/libdusrelimage_ffi.so | grep -q " dusrelimage_make_collage$"
+          nm -D packages/php/lib/libdusrelimage_ffi.so | grep -q " dusrelimage_pixelate$"
+          nm -D packages/php/lib/libdusrelimage_ffi.so | grep -q " dusrelimage_get_image_info$"
+          nm -D packages/php/lib/libdusrelimage_ffi.so | grep -q " dusrelimage_bulk_process$"
+          nm -D packages/php/lib/libdusrelimage_ffi.so | grep -q " dusrelimage_last_error$"
+          nm -D packages/php/lib/libdusrelimage_ffi.so | grep -q " dusrelimage_free_buffer$"
+          nm -D packages/php/lib/libdusrelimage_ffi.so | grep -q " dusrelimage_version$"
+      - name: composer validate + install
+        working-directory: packages/php
+        run: |
+          # Plain `composer validate` (not --strict): composer.json
+          # intentionally carries a "version" field for the repo's
+          # lockstep version script, which validate --strict warns on.
+          composer validate
+          composer install --no-progress --prefer-dist
+      - name: php -l on all PHP files
+        working-directory: packages/php
+        run: |
+          for f in $(find src tests -name '*.php'); do php -l "$f"; done
+      - name: phpunit (shared vectors + wrapper tests)
+        working-directory: packages/php
+        run: vendor/bin/phpunit --testdox
