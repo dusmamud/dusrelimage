@@ -1136,7 +1136,7 @@ fn to_core_op(value: BulkOp) -> Option<CoreBulkOp> {
 #[derive(Debug, Clone, PartialEq)]
 pub enum BulkOutput {
     Image { bytes: Vec<u8> },
-    Colour { colour: Colour },
+    SingleColour { colour: Colour },
     Palette { palette: Vec<PaletteColour> },
 }
 
@@ -1144,7 +1144,7 @@ impl From<CoreBulkOutput> for BulkOutput {
     fn from(value: CoreBulkOutput) -> Self {
         match value {
             CoreBulkOutput::Image(bytes) => Self::Image { bytes },
-            CoreBulkOutput::Colour(colour) => Self::Colour {
+            CoreBulkOutput::Colour(colour) => Self::SingleColour {
                 colour: colour.into(),
             },
             CoreBulkOutput::Palette(palette) => Self::Palette {
@@ -1713,8 +1713,8 @@ mod tests {
         assert_eq!(colour_results.len(), 1);
         assert!(colour_results[0].ok);
         match &colour_results[0].output {
-            Some(BulkOutput::Colour { colour }) => assert_eq!(colour.hex, "#090807"),
-            other => panic!("expected BulkOutput::Colour, got {other:?}"),
+            Some(BulkOutput::SingleColour { colour }) => assert_eq!(colour.hex, "#090807"),
+            other => panic!("expected BulkOutput::SingleColour, got {other:?}"),
         }
         let palette_results = bulk_process(vec![input.clone()], BulkOp::Palette { count: 2 });
         assert!(palette_results[0].ok);

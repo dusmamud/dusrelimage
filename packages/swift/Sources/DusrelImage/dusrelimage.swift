@@ -2678,7 +2678,7 @@ public enum BulkOutput {
     
     case image(bytes: [UInt8]
     )
-    case colour(colour: Colour
+    case singleColour(colour: Colour
     )
     case palette(palette: [PaletteColour]
     )
@@ -2702,7 +2702,7 @@ public struct FfiConverterTypeBulkOutput: FfiConverterRustBuffer {
         case 1: return .image(bytes: try FfiConverterSequenceUInt8.read(from: &buf)
         )
         
-        case 2: return .colour(colour: try FfiConverterTypeColour.read(from: &buf)
+        case 2: return .singleColour(colour: try FfiConverterTypeColour.read(from: &buf)
         )
         
         case 3: return .palette(palette: try FfiConverterSequenceTypePaletteColour.read(from: &buf)
@@ -2721,7 +2721,7 @@ public struct FfiConverterTypeBulkOutput: FfiConverterRustBuffer {
             FfiConverterSequenceUInt8.write(bytes, into: &buf)
             
         
-        case let .colour(colour):
+        case let .singleColour(colour):
             writeInt(&buf, Int32(2))
             FfiConverterTypeColour.write(colour, into: &buf)
             

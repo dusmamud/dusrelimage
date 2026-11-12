@@ -2683,7 +2683,7 @@ sealed class BulkOutput {
         companion object
     }
     
-    data class Colour(
+    data class SingleColour(
         val `colour`: Colour) : BulkOutput() {
         companion object
     }
@@ -2707,7 +2707,7 @@ public object FfiConverterTypeBulkOutput : FfiConverterRustBuffer<BulkOutput>{
             1 -> BulkOutput.Image(
                 FfiConverterSequenceUByte.read(buf),
                 )
-            2 -> BulkOutput.Colour(
+            2 -> BulkOutput.SingleColour(
                 FfiConverterTypeColour.read(buf),
                 )
             3 -> BulkOutput.Palette(
@@ -2725,7 +2725,7 @@ public object FfiConverterTypeBulkOutput : FfiConverterRustBuffer<BulkOutput>{
                 + FfiConverterSequenceUByte.allocationSize(value.`bytes`)
             )
         }
-        is BulkOutput.Colour -> {
+        is BulkOutput.SingleColour -> {
             // Add the size for the Int that specifies the variant plus the size needed for all fields
             (
                 4UL
@@ -2748,7 +2748,7 @@ public object FfiConverterTypeBulkOutput : FfiConverterRustBuffer<BulkOutput>{
                 FfiConverterSequenceUByte.write(value.`bytes`, buf)
                 Unit
             }
-            is BulkOutput.Colour -> {
+            is BulkOutput.SingleColour -> {
                 buf.putInt(2)
                 FfiConverterTypeColour.write(value.`colour`, buf)
                 Unit

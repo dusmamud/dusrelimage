@@ -391,7 +391,7 @@ public enum DusrelImage {
             switch item.output {
             case let .image(bytes):
                 return .image(index: item.index, bytes: Data(bytes))
-            case let .colour(colour):
+            case let .singleColour(colour):
                 return .colour(index: item.index, colour: colour)
             case let .palette(palette):
                 return .palette(index: item.index, palette: palette)

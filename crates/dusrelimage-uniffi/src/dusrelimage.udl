@@ -419,7 +419,7 @@ interface BulkOp {
 [Enum]
 interface BulkOutput {
     Image(sequence<u8> bytes);
-    Colour(Colour colour);
+    SingleColour(Colour colour);
     Palette(sequence<PaletteColour> palette);
 };
 

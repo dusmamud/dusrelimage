@@ -282,7 +282,7 @@ object DusrelImage {
             } else {
                 when (val out = item.output) {
                     is BulkOutput.Image -> BulkResult.Image(item.index, out.bytes.toByteArray())
-                    is BulkOutput.Colour -> BulkResult.Colour(item.index, out.colour)
+                    is BulkOutput.SingleColour -> BulkResult.Colour(item.index, out.colour)
                     is BulkOutput.Palette -> BulkResult.Palette(item.index, out.palette)
                     null -> BulkResult.Failed(
                         item.index,
