@@ -19,8 +19,16 @@ namespace Dusrelimage;
  */
 class DusrelError extends \Exception
 {
-    /** Stable, machine-readable error code, e.g. `"INVALID_IMAGE"`. */
-    public string $code;
+    /**
+     * Stable, machine-readable error code, e.g. `"INVALID_IMAGE"`.
+     *
+     * Deliberately untyped: `\Exception` already defines `$code`
+     * (untyped, `protected`), and PHP fatals if a child redeclares an
+     * inherited property with a type the parent does not have.
+     *
+     * @var string
+     */
+    public $code;
 
     /** English message from the Rust core. */
     public string $messageEn;
