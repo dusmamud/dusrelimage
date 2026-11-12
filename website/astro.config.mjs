@@ -16,7 +16,7 @@ const jsonLd = {
 	softwareVersion: '0.1.0',
 	url: 'https://dusrelimage.pages.dev/',
 	downloadUrl: 'https://www.npmjs.com/package/dusrelimage',
-	programmingLanguage: ['Rust', 'JavaScript', 'TypeScript', 'Python'],
+	programmingLanguage: ['Rust', 'JavaScript', 'TypeScript', 'Python', 'Go', 'PHP', 'Kotlin', 'Swift', 'C'],
 	license: 'https://github.com/dusmamud/dusrelimage/blob/main/LICENSE',
 };
 
@@ -45,7 +45,7 @@ export default defineConfig({
 					attrs: {
 						property: 'og:description',
 						content:
-							'Compress, resize, crop, convert, watermark, annotate, pick colours, extract palettes, build collages and pixelate — offline. One Rust core, bindings for JavaScript, Python and Rust, plus a CLI.',
+							'Compress, resize, crop, convert, watermark, annotate, pick colours, extract palettes, build collages and pixelate — offline. One Rust core, bindings for JavaScript, Python, Rust, Go, PHP, Android and Swift, plus a CLI.',
 					},
 				},
 				{ tag: 'meta', attrs: { property: 'og:url', content: 'https://dusrelimage.pages.dev/' } },
@@ -57,7 +57,7 @@ export default defineConfig({
 					attrs: {
 						name: 'twitter:description',
 						content:
-							'Compress, resize, crop, convert, watermark, annotate, pick colours, extract palettes, build collages and pixelate — offline. One Rust core, JavaScript, Python and Rust bindings, plus a CLI.',
+							'Compress, resize, crop, convert, watermark, annotate, pick colours, extract palettes, build collages and pixelate — offline. One Rust core, JavaScript, Python, Rust, Go, PHP, Android and Swift bindings, plus a CLI.',
 					},
 				},
 				{ tag: 'meta', attrs: { name: 'twitter:image', content: 'https://dusrelimage.pages.dev/og.svg' } },
@@ -78,6 +78,16 @@ export default defineConfig({
 						{ label: 'Quickstart', slug: 'guides/quickstart' },
 						{ label: 'Options', slug: 'guides/options' },
 						{ label: 'Error codes', slug: 'guides/error-codes' },
+					],
+				},
+				{
+					label: 'Languages',
+					items: [
+						{ label: 'C API', slug: 'guides/c-api' },
+						{ label: 'Go', slug: 'guides/go' },
+						{ label: 'PHP', slug: 'guides/php' },
+						{ label: 'Android', slug: 'guides/android' },
+						{ label: 'Swift', slug: 'guides/swift' },
 					],
 				},
 				{

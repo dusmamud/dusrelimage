@@ -1,0 +1,156 @@
+---
+title: Android
+description: Use dusrelimage from Kotlin on Android — UniFFI bindings over the Rust core, JNI .so built with cargo-ndk.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Android library for dusrelimage (v0.1.0): the same Rust core as the
+JS/Python/CLI bindings, exposed to Kotlin via UniFFI 0.29.5. Offline
+— no network, no uploads. All image work happens in Rust; the
+Kotlin side is a thin wrapper plus generated JNA bindings.
+
+Namespace: `com.dusrel.image`, compileSdk 34, minSdk 24, Kotlin
+2.0.21, AGP 8.5.2, Gradle 8.11.1, JDK 17.
+
+## Usage
+
+```kotlin
+import com.dusrel.image.DusrelImage
+import com.dusrel.image.CompressOptions
+import com.dusrel.image.CommonOptions
+import com.dusrel.image.ImageFormat
+
+val input: ByteArray = /* JPEG/PNG/WebP/GIF/BMP/TIFF bytes */
+
+// Tool 1 — compress to JPEG quality 80 (defaults: quality 80, keep format).
+val jpeg: ByteArray = DusrelImage.compressImage(input, CompressOptions(CommonOptions(), format = ImageFormat.JPEG))
+
+// Tool 2 — resize to width 800, aspect kept.
+val small: ByteArray = DusrelImage.resizeImage(
+    input,
+    ResizeOptions(CommonOptions(), width = 800u, background = DusrelImage.white()),
+)
+
+// Tool 7 — colour of one pixel.
+val colour = DusrelImage.pickColour(input, 10u, 20u) // Colour(hex="#0A141E", r, g, b, a, hsl)
+
+// Info + errors.
+val info = DusrelImage.getImageInfo(input) // ImageInfo(format, width, height, hasAlpha, colourType, fileSize)
+try {
+    DusrelImage.compressImage(ByteArray(0))
+} catch (e: DusrelError) {
+    println("${e.code}: ${e.messageEn} / ${e.messageHi}") // e.g. EMPTY_INPUT
+}
+
+// Bulk: one bad input fails only its own item.
+val results: List<BulkResult> = DusrelImage.bulkProcess(
+    listOf(input, byteArrayOf(0, 1, 2, 3)),
+    BulkOp.Pixelate(PixelateOptions(CommonOptions())),
+)
+// results[0] is BulkResult.Image(bytes=...), results[1] is BulkResult.Failed(error=...)
+```
+
+The generated top-level functions (`compressImage`, `pickColour`, …)
+also exist in the same package, but they use `List<UByte>` and throw
+the generated `DusrelException` (one subclass per error code) — the
+wrapper exists precisely so callers don't have to deal with that.
+
+### Colours
+
+The generated `Colour` record has no defaults, so build colours via
+the wrapper: `DusrelImage.white()`, `DusrelImage.black()`,
+`DusrelImage.colourFromRgb(r, g, b, a = 255)`,
+`DusrelImage.colourFromHex("#RRGGBB")` (also `#RGB`, `#RRGGBBAA`).
+`hex` is always `"#RRGGBB"` and `hsl` is
+`[h_degrees_0..360, s_0..1, l_0..1]` — both derived from RGB, exactly
+as the Rust core does.
+
+### Options defaults
+
+Every `*Options` parameter defaults to a fully-defaulted object:
+`CommonOptions()` (autoOrient=true, maxPixels=120,000,000,
+maxDimension=16000), white `#FFFFFF` background where one is
+required, `CollageLayout.Grid(rows=2, cols=2)` for collage. The UDL
+cannot give a default to a field that is itself a dictionary, so the
+generated `common` / `background` / `layout` fields are required
+there — the wrapper fills them. Defaults reproduce the Rust
+`Default` values ([Options](/guides/options/)) exactly.
+
+## Build
+
+### 1. Host cdylib + JVM unit tests (no Android SDK needed)
+
+```sh
+cargo build -p dusrelimage-uniffi --release   # host lib for the JVM tests
+cd packages/android
+gradle :lib:testDebugUnitTest
+```
+
+The tests load the host library through the
+`uniffi.component.dusrelimage.libraryOverride` system property, set
+in `lib/build.gradle.kts` from `DUSRELIMAGE_UNIFFI_LIB` (default:
+`<repo>/target/release/libdusrelimage_uniffi.so` on Linux; on macOS
+set `DUSRELIMAGE_UNIFFI_LIB` to the `.dylib` path). The tests run the
+82 shared vectors plus the wrapper tests — they need the cdylib, not
+an emulator or device.
+
+### 2. JNI `.so` for Android (needs SDK + NDK)
+
+```sh
+rustup target add aarch64-linux-android armv7-linux-androideabi x86_64-linux-android
+cargo install cargo-ndk --version 4.1.2 --locked
+export ANDROID_NDK_HOME=/path/to/android-sdk/ndk/26.3.11579264
+bash packages/android/scripts/build-jni.sh
+```
+
+`--platform 24` matches minSdk 24. Output:
+`lib/src/main/jniLibs/<abi>/libdusrelimage_uniffi.so` for arm64-v8a +
+armeabi-v7a + x86_64 — built in CI, **never committed**
+(`*.so` is gitignored). The library AAR then includes the `.so` for
+the three ABIs.
+
+<Aside type="note" title="No versionName / versionCode">
+  The library has no `versionName` or `versionCode` — the Rust core
+  is the version of record (0.1.0, see `DusrelImage.version()`).
+</Aside>
+
+### 3. Regenerate the Kotlin bindings
+
+After any change to `crates/dusrelimage-uniffi/src/dusrelimage.udl`
+(or `uniffi.toml`):
+
+```sh
+cargo run -p dusrelimage-uniffi --bin uniffi-bindgen -- generate \
+  --language kotlin --no-format \
+  --out-dir packages/android/lib/src/main/kotlin \
+  crates/dusrelimage-uniffi/src/dusrelimage.udl
+```
+
+The bindgen is the **in-crate binary**, so it always matches the
+pinned uniffi **0.29.5** — never install a separate
+`uniffi-bindgen` from crates.io for this crate. `--no-format`:
+ktlint is not installed in CI/sandbox, so generation skips the
+auto-format step. The checked-in file is the raw `--no-format`
+output; CI diffs a fresh regeneration against it and fails if it
+differs.
+
+## Errors
+
+One `DusrelError` exception with a stable `code`
+(`INVALID_IMAGE`, `UNSUPPORTED_FORMAT`, `IMAGE_TOO_LARGE`,
+`TARGET_SIZE_UNREACHABLE`, `CROP_OUT_OF_BOUNDS`,
+`PIXEL_OUT_OF_BOUNDS`, `INVALID_QUALITY`, `INVALID_DIMENSIONS`,
+`INVALID_ARGUMENT`, `EMPTY_INPUT`, `INVALID_TYPE`) plus
+`messageEn` / `messageHi`.
+
+## Limits
+
+Same as the Rust core in v0.1.0: AVIF input does **not** decode
+(`UNSUPPORTED_FORMAT`); WebP output is always lossless;
+`keep_exif` / `dpi` / `progressive` are accepted but not honoured;
+`compress_to_size` quality search is JPEG/AVIF-only; TIFF input
+falls back to PNG output; collage output is always PNG; PNG
+`palette` quantise flag is not implemented; GIF output is the first
+frame only; no HEIC; whole image in memory, no streaming. See
+[Changelog](/changelog/) for the full list.

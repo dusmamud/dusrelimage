@@ -11,6 +11,12 @@ pip install dusrelimage   # Python (native wheel)
 cargo add dusrelimage     # Rust
 ```
 
+Go, PHP, Android and Swift build on the same core too — see
+[Go](#go), [PHP](#php), [Android](#android) and [Swift](#swift)
+below. The C API (`crates/dusrelimage-ffi`) and the UniFFI
+interface (`crates/dusrelimage-uniffi`) are the shared
+foundations; every binding ships in v0.1.0.
+
 ```rust
 use dusrelimage::{compress_to_size, resize_image, ResizeOptions};
 
@@ -44,6 +50,95 @@ dusrelimage resize photo.png --width 800 -o thumb.jpg
 dusrelimage palette photo.png --count 5
 ```
 
+## Go
+
+Module `github.com/dusmamud/dusrelimage-go` (cgo over the C API).
+Build the native library first — the package downloads no prebuilt
+binary:
+
+```sh
+bash packages/go/scripts/build-ffi.sh   # cargo build -p dusrelimage-ffi --release
+```
+
+```go
+import dusrelimage "github.com/dusmamud/dusrelimage-go"
+
+small, err := dusrelimage.CompressToSize(input, 50*1024, nil)
+opts := dusrelimage.DefaultResizeOptions()
+width := uint32(800)
+opts.Width = &width
+thumb, err := dusrelimage.Resize(input, &opts)
+```
+
+Full API and options: [packages/go/README.md](packages/go/README.md).
+
+## PHP
+
+PHP 8.1+ with the `ffi` and `json` extensions. **Composer-direct
+install is NOT possible** — the wrapper needs the native shared
+library, built from the Rust source first:
+
+```sh
+composer install
+bash packages/php/scripts/build-ffi.sh   # builds libdusrelimage_ffi.so into packages/php/lib/
+```
+
+```php
+use Dusrelimage\Dusrelimage;
+
+$di = new Dusrelimage(); // finds lib/libdusrelimage_ffi.so, or $DUSRELIMAGE_FFI_LIB
+$small = $di->compressToSize($bytes, 50 * 1024, ['format' => 'Jpeg', 'quality' => 90]);
+$thumb = $di->resize($bytes, ['width' => 800]);
+```
+
+Full API and options: [packages/php/README.md](packages/php/README.md).
+
+## Android
+
+Kotlin library, namespace `com.dusrel.image`, compileSdk 34,
+minSdk 24 (UniFFI 0.29.5 over the Rust core). The JNI `.so`
+(arm64-v8a + armeabi-v7a + x86_64) is built with cargo-ndk and is
+never committed:
+
+```sh
+bash packages/android/scripts/build-jni.sh
+```
+
+```kotlin
+import com.dusrel.image.DusrelImage
+import com.dusrel.image.CompressOptions
+
+val small: ByteArray = DusrelImage.compressToSize(input, 50 * 1024)
+val thumb: ByteArray = DusrelImage.resizeImage(
+    input, ResizeOptions(CommonOptions(), width = 800u)
+)
+```
+
+Full API and build steps: [packages/android/README.md](packages/android/README.md).
+
+## Swift
+
+Swift package `DusrelImage`, macOS 13+ / iOS 16+ (UniFFI 0.29.5
+over the Rust core). Build the native library first — it is never
+committed:
+
+```sh
+cargo build -p dusrelimage-uniffi --release
+cd packages/swift
+swift build -Xlinker -L"$PWD/../../target/release"
+```
+
+```swift
+import DusrelImage
+
+let small = try DusrelImage.compressToSize(input, targetBytes: 50 * 1024)
+let thumb = try DusrelImage.resizeImage(
+    input, options: ResizeOptions(common: CommonOptions(), width: 800)
+)
+```
+
+Full API and linking: [packages/swift/README.md](packages/swift/README.md).
+
 ## Tools (v0.1.0)
 
 | Tool | What it does |
@@ -68,8 +163,11 @@ and a full CLI.
 ## Why dusrelimage
 
 - **One core, every language.** The logic lives once in Rust
-  (`crates/dusrelimage`); JS (WASM), Python (PyO3) and the CLI all call
-  the same code, so behaviour never drifts between languages.
+  (`crates/dusrelimage`); JS (WASM), Python (PyO3), Go and PHP
+  (over the C API in `crates/dusrelimage-ffi`), Android/Kotlin
+  and Swift (over the UniFFI interface in
+  `crates/dusrelimage-uniffi`) and the CLI all call the same
+  code, so behaviour never drifts between languages.
 - **10 tools, first-class.** No other package covers all ten —
   see [SPEC.md](SPEC.md) for the competitor gaps this fills.
 - **Private by design.** Nothing is uploaded anywhere. The website
@@ -101,7 +199,14 @@ crates/dusrelimage/       Rust core (the only place with image logic)
 crates/dusrelimage-cli/   `dusrelimage` binary (publish = false)
 crates/dusrelimage-py/    Python bindings, PyO3 (publish = false)
 crates/dusrelimage-wasm/  WASM bindings (publish = false)
+crates/dusrelimage-ffi/   C API over the core (publish = false)
+crates/dusrelimage-uniffi/ UniFFI 0.29.5 bindings (publish = false)
 packages/js/              npm package `dusrelimage` (WASM wrapper)
+packages/python/          PyPI package `dusrelimage` (thin wrapper)
+packages/go/              Go module `dusrelimage-go` (cgo over the FFI lib)
+packages/php/             Composer package `dusmamud/dusrelimage` (PHP FFI)
+packages/android/         Android library `com.dusrel.image` (UniFFI Kotlin)
+packages/swift/           Swift package `DusrelImage` (UniFFI Swift)
 website/                  Astro Starlight docs + WASM playground
 shared/                   test vectors every language must pass
 ```

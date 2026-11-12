@@ -66,7 +66,20 @@ offline — no network, no uploads.
 - Whole image in memory, no streaming.
 - Text drawing uses the bundled DejaVu Sans font.
 
+### New in v0.1.0 — the other languages
+
+- **Go** (`github.com/dusmamud/dusrelimage-go`) — cgo over the C API;
+  build the native library with `packages/go/scripts/build-ffi.sh`.
+- **PHP** (`dusmamud/dusrelimage`) — FFI wrapper over the C API.
+  Composer-direct install is NOT possible: `libdusrelimage_ffi.so`
+  must be built first (`packages/php/scripts/build-ffi.sh`).
+- **Android** (`com.dusrel.image`) — UniFFI 0.29.5 Kotlin bindings;
+  JNI `.so` via cargo-ndk (arm64-v8a + armeabi-v7a + x86_64).
+- **Swift** (`DusrelImage`) — UniFFI 0.29.5 Swift bindings; macOS 13+ /
+  iOS 16+.
+- **C API** (`crates/dusrelimage-ffi`) — 16 `dusrelimage_`-prefixed
+  exports; the foundation Go and PHP build on.
+
 ### Not in v0.1.0 (planned)
 
-- **v0.2.x:** Go via C API, napi-rs native Node package, PHP FFI wrapper.
-- **v0.3.x:** UniFFI Kotlin/Swift (Android/iOS).
+- **v0.2.x:** napi-rs native Node package.

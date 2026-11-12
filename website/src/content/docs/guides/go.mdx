@@ -1,0 +1,154 @@
+---
+title: Go
+description: Use dusrelimage from Go — cgo over the C API, same Rust core, same results as every other binding.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Go binding for dusrelimage (v0.1.0): the same Rust core as the
+JS/Python/CLI bindings, wrapped over its C API
+(`crates/dusrelimage-ffi`) via cgo. No network, no uploads.
+
+Module: `github.com/dusmamud/dusrelimage-go` — version `0.1.0`, in
+lockstep with the core. Releases are tagged `vX.Y.Z` on the repo;
+`go.mod` carries no version of its own.
+
+## Build the native library first
+
+The image work lives in Rust. The Go package does **not** download a
+prebuilt binary and does not vendor one — you build the C library
+from the Rust sources in this repo:
+
+```sh
+# From the repo root:
+bash packages/go/scripts/build-ffi.sh
+# Runs: cargo build -p dusrelimage-ffi --release
+# Leaves: target/release/libdusrelimage_ffi.a   (Linux/macOS)
+#         target/release/dusrelimage_ffi.lib    (Windows)
+```
+
+Requires a Rust toolchain (`cargo` on `PATH`, or
+`~/.cargo/bin/cargo`). The script fails loudly if `cargo` is missing
+or the library is not produced. `ffi.go` (the only file with cgo
+declarations) links the static library by relative path, so no
+install step and no `CGO_LDFLAGS` fiddling is needed.
+
+## Usage
+
+```go
+import dusrelimage "github.com/dusmamud/dusrelimage-go"
+
+// Bytes in / bytes out. Nil options = all defaults.
+out, err := dusrelimage.Compress(input, nil)
+if err != nil {
+    var de *dusrelimage.DusrelError
+    errors.As(err, &de)
+    fmt.Println(de.Code, de.MessageEn, de.MessageHi) // e.g. INVALID_IMAGE
+}
+
+// Options start from a Default*Options() constructor:
+resizeOpts := dusrelimage.DefaultResizeOptions()
+width := uint32(800)
+resizeOpts.Width = &width
+out, err = dusrelimage.Resize(input, &resizeOpts)
+
+// Convert to another format:
+convertOpts := dusrelimage.DefaultConvertOptions()
+convertOpts.Format = dusrelimage.FormatWebP
+out, err = dusrelimage.Convert(input, &convertOpts)
+
+// One pixel, a palette, a collage:
+colour, err := dusrelimage.PickColour(input, 5, 5)   // colour.Hex == "#0A141E"
+palette, err := dusrelimage.ExtractPalette(input, 5) // []PaletteColour, most frequent first
+collage, err := dusrelimage.MakeCollage([][]byte{a, b}, nil)
+
+// One op over many inputs; one bad input fails only its own item:
+results, err := dusrelimage.BulkProcess(
+    [][]byte{good, bad, good},
+    dusrelimage.BulkResize(&resizeOpts),
+)
+for _, r := range results {
+    if !r.OK {
+        fmt.Println(r.Index, r.Error.Code) // e.g. 1 INVALID_IMAGE
+    }
+}
+
+// Image summary and library version:
+info, err := dusrelimage.GetImageInfo(input, nil) // info.Format == "png", info.Width, ...
+fmt.Println(dusrelimage.Version())                // "0.1.0"
+```
+
+## API
+
+| Function | Description |
+| --- | --- |
+| `Compress(input, opts)` | Re-encode at a fixed quality (and `Format`, or the input format) |
+| `CompressToSize(input, targetBytes, opts)` | Re-encode to at most `targetBytes` bytes |
+| `Resize(input, opts)` | Width and/or height, percent, fit, filter |
+| `Crop(input, opts)` | Rectangle or anchor preset |
+| `Convert(input, opts)` | Convert to another format |
+| `AddWatermark(input, opts)` | Text and/or logo watermark |
+| `Annotate(input, annotations)` | Arrows, rects, ellipses, lines, text |
+| `PickColour(input, x, y)` | Colour of one pixel |
+| `ExtractPalette(input, count)` | Dominant colours, most frequent first |
+| `MakeCollage(inputs, opts)` | Grid / row / column collage (always PNG) |
+| `Pixelate(input, opts)` | Pixelate a rectangle (whole image by default) |
+| `GetImageInfo(input, opts)` | Image summary without modifying it |
+| `BulkProcess(inputs, op)` | One op over many inputs; partial failures per item |
+| `Version()` | Native library version, e.g. `"0.1.0"` |
+
+Options structs mirror the Rust `*Options` structs field for field
+(Go field names in CamelCase, JSON tags in the Rust serde snake_case
+names), with a `Default*Options()` constructor per op filling the
+Rust defaults. Pass `nil` for all defaults, or start from the
+constructor and change the fields you need.
+
+<Aside type="caution" title="A zero-value options struct is NOT the defaults">
+  A zero `CompressOptions` has `Quality` 0, which is
+  `INVALID_QUALITY`. Always start from `Default*Options()` or pass
+  `nil`.
+</Aside>
+
+Colours are full objects (`{Hex, R, G, B, A, HSL}`); use
+`ColourFromHex("#FF0000")` (also accepts `"#RGB"` / `"#RRGGBBAA"`,
+with or without `#`) or `ColourFromRGB` / `ColourWhite` /
+`ColourBlack`. Collage layouts are `GridLayout(rows, cols)`,
+`RowLayout`, `ColumnLayout`. Annotations are concrete types
+(`ArrowAnnotation`, `RectAnnotation`, `EllipseAnnotation`,
+`LineAnnotation`, `TextAnnotation`).
+
+## Errors
+
+Every failure is a `*DusrelError` with a stable `Code`
+(`INVALID_IMAGE`, `UNSUPPORTED_FORMAT`, `IMAGE_TOO_LARGE`,
+`TARGET_SIZE_UNREACHABLE`, `CROP_OUT_OF_BOUNDS`,
+`PIXEL_OUT_OF_BOUNDS`, `INVALID_QUALITY`, `INVALID_DIMENSIONS`,
+`INVALID_ARGUMENT`, `EMPTY_INPUT`, `INVALID_TYPE`), plus
+`MessageEn` / `MessageHi` from the Rust core — never a raw panic or
+a bare error string. `Error()` formats as `"CODE: english message"`.
+
+## Tests
+
+```sh
+# Build the FFI library (above) and the CLI used for test fixtures:
+cargo build -p dusrelimage-cli --release
+
+# Then, from packages/go:
+go vet ./...
+go test ./...
+```
+
+`go test` runs the shared vectors in `shared/test-vectors.json` (82
+cases: all 10 tools + info + bulk + error cases), the same contract
+the Rust, Python and JS runners check. 93 tests pass locally.
+
+## Limits
+
+Same as the Rust core in v0.1.0: AVIF input does **not** decode
+(`UNSUPPORTED_FORMAT`); WebP output is always lossless;
+`keep_exif` / `dpi` / `progressive` are accepted but not honoured;
+`compress_to_size` quality search is JPEG/AVIF-only; TIFF input
+falls back to PNG output; GIF output is the first frame only;
+collage output is always PNG; PNG `palette` quantise flag is not
+implemented; no HEIC; whole image in memory, no streaming. See
+[Changelog](/changelog/) for the full list.

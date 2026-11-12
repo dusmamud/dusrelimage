@@ -1,0 +1,174 @@
+---
+title: PHP
+description: Use dusrelimage from PHP — an FFI wrapper over the Rust core's C API. Build the native library first; Composer alone is not enough.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+PHP binding for dusrelimage (v0.1.0): one Rust core, wrapped for PHP
+via FFI. No network, no uploads.
+
+Package: `dusmamud/dusrelimage`, version `0.1.0`, in lockstep with
+the Rust crate, the JS package and the Python package.
+
+<Aside type="caution" title="Composer-direct install is NOT possible">
+  `composer require dusmamud/dusrelimage` alone does **not** give you
+  a working library: this package is a thin PHP wrapper around a
+  native shared library (`libdusrelimage_ffi.so`) that must be built
+  from the Rust source first. Until that `.so` exists on your machine,
+  every call fails with a clear "native library not found" error.
+  There is no pure-PHP fallback and no prebuilt binary shipped with
+  the package.
+</Aside>
+
+## Install / build
+
+Requirements: PHP >= 8.1 with the `ffi` and `json` extensions,
+Composer, and a Rust toolchain (for building the native library).
+
+```bash
+composer install
+bash scripts/build-ffi.sh   # cargo build -p dusrelimage-ffi --release
+                            # + cargo build -p dusrelimage-cli --release
+                            # copies target/release/libdusrelimage_ffi.so
+                            # to packages/php/lib/libdusrelimage_ffi.so
+vendor/bin/phpunit          # runs the shared test vectors + wrapper tests
+```
+
+`Dusrelimage` resolves the library in this order: the path passed
+to `new Dusrelimage($path)`; the `DUSRELIMAGE_FFI_LIB` environment
+variable; `packages/php/lib/libdusrelimage_ffi.so` (where the build
+script puts it); `target/release/libdusrelimage_ffi.so` in a repo
+checkout. If none exists, the constructor throws a `RuntimeException`
+telling you to run the build script.
+
+PHP's FFI also needs to be enabled: under the CLI SAPI the default
+`ffi.enable=preload` is enough; under a web SAPI set `ffi.enable=true`
+(or preload the library) or FFI calls are refused.
+
+## Usage
+
+```php
+use Dusrelimage\Dusrelimage;
+
+$di = new Dusrelimage(); // finds lib/libdusrelimage_ffi.so, or $DUSRELIMAGE_FFI_LIB
+$bytes = file_get_contents('photo.png');
+
+$small = $di->compressToSize($bytes, 50 * 1024, ['format' => 'Jpeg', 'quality' => 90]);
+$thumb = $di->resize($bytes, ['width' => 800]);
+$info  = $di->getImageInfo($bytes); // ['format', 'width', 'height', 'has_alpha', 'colour_type', 'file_size']
+$colour = $di->pickColour($bytes, 10, 20); // ['hex' => '#FF0000', 'r', 'g', 'b', 'a', 'hsl']
+```
+
+All methods are **synchronous** and throw a `DusrelError` on failure
+— never a raw FFI error, never a raw JSON string. Inputs are PHP
+strings (bytes) only; any non-string input throws `DusrelError`
+with code `INVALID_TYPE`, and empty strings throw `EMPTY_INPUT`.
+
+## API
+
+| Method | Returns | Notes |
+| --- | --- | --- |
+| `version()` | `string` | `"0.1.0"` |
+| `compress(string $input, array $options = [])` | `string` (bytes) | Tool 1 |
+| `compressToSize(string $input, int $targetBytes, array $options = [])` | `string` (bytes) | Tool 1; `TARGET_SIZE_UNREACHABLE` when impossible |
+| `resize(string $input, array $options = [])` | `string` (bytes) | Tool 2 |
+| `crop(string $input, array $options = [])` | `string` (bytes) | Tool 3; `options` requires `width` + `height` |
+| `convert(string $input, array $options = [])` | `string` (bytes) | Tool 4; `options['format']` required |
+| `addWatermark(string $input, array $options = [])` | `string` (bytes) | Tool 5; `text` and/or `logo` |
+| `annotate(string $input, array $annotations)` | `string` (bytes) | Tool 6 |
+| `pickColour(string $input, int $x, int $y)` | `array` | Tool 7; `['hex','r','g','b','a','hsl']` |
+| `extractPalette(string $input, int $count = 5)` | `array` | Tool 8; count 1–16; entries are `['hex','r','g','b','a','hsl','share']` |
+| `makeCollage(array $inputs, array $options = [])` | `string` (bytes) | Tool 9; always PNG |
+| `pixelate(string $input, array $options = [])` | `string` (bytes) | Tool 10 |
+| `getImageInfo(string $input, array $options = [])` | `array` | `['format','width','height','has_alpha','colour_type','file_size']` |
+| `bulkProcess(array $inputs, string $op, array $options = [])` | `array` | One result per input, same order; partial failure tolerated |
+
+`DusrelError` carries `->code` (stable, machine-readable),
+`->messageEn` and `->messageHi` (human-readable, Roman-script
+Hinglish), plus `->reasonEn` / `->reasonHi` aliases. Error codes:
+`INVALID_IMAGE`, `UNSUPPORTED_FORMAT`, `IMAGE_TOO_LARGE`,
+`TARGET_SIZE_UNREACHABLE`, `CROP_OUT_OF_BOUNDS`,
+`PIXEL_OUT_OF_BOUNDS`, `INVALID_QUALITY`, `INVALID_DIMENSIONS`,
+`INVALID_ARGUMENT`, `EMPTY_INPUT`, `INVALID_TYPE`, `UNKNOWN`
+(unclassified FFI failure).
+
+## Options
+
+Options are PHP arrays with snake_case keys matching the Rust
+`*Options` serde names (see [Options](/guides/options/)). The
+wrapper ALWAYS sends complete objects: every field is filled with
+the Rust default, so callers only pass what they want to change.
+`common` fields may be passed nested under `"common"` or flat at
+the top level (nested wins).
+
+```php
+$di->compress($bytes, ['quality' => 70, 'format' => 'Jpeg']);           // quality 1-100, default 80
+$di->resize($bytes, ['percent' => 50.0]);                               // or width / height, fit, filter
+$di->resize($bytes, ['width' => 40, 'height' => 40, 'fit' => 'Fill', 'background' => '#FFFFFF']);
+$di->crop($bytes, ['x' => 10, 'y' => 10, 'width' => 20, 'height' => 20]); // or ['anchor' => 'Center', ...]
+$di->convert($bytes, ['format' => 'WebP', 'quality' => 80]);
+$di->addWatermark($bytes, ['text' => ['text' => 'Hi', 'size' => 48.0, 'colour' => '#000000'], 'opacity' => 1.0, 'position' => 'BottomRight']);
+$di->annotate($bytes, [
+  ['type' => 'Rect', 'x' => 10, 'y' => 10, 'w' => 40, 'h' => 30, 'colour' => '#FF0000', 'width' => 2, 'fill' => '#FF0000'],
+  ['type' => 'Line', 'from' => [0, 0], 'to' => [99, 99], 'colour' => '#000000', 'width' => 1],
+]);
+$di->makeCollage([$a, $b], ['layout' => '2x2', 'gap' => 10, 'width' => 210, 'height' => 100]); // or 'row' / 'column'
+$di->pixelate($bytes, ['x' => 0, 'y' => 0, 'width' => 50, 'height' => 50, 'block_size' => 10]);
+```
+
+Defaults (from the Rust core): `quality` 80, `effort` 4,
+`progressive` / `lossless` false, `fit` `Fit`, `filter` `Lanczos3`,
+background white, watermark `opacity` 0.5 / `position`
+`BottomRight` / `rotation_deg` 0 / `margin` 16, collage `gap` 8 /
+`width` / `height` 1200 / `cell_fit` `Fit`, `block_size` 10,
+`auto_orient` true, `keep_exif` false, `max_pixels` 120,000,000,
+`max_dimension` 16000.
+
+Colours are `"#RRGGBB"` hex strings (or `"#RGB"` / `"#RRGGBBAA"`)
+or full `Colour` arrays; enum values accept the Rust serde
+spelling (`"Jpeg"`, `"Fit"`, `"Lanczos3"`, `"BottomRight"`) or a
+lowercase spelling (`"jpeg"`, `"fit"`, `"lanczos3"`,
+`"bottom-right"`).
+
+## bulkProcess
+
+```php
+[
+  ['index' => 0, 'ok' => true, 'output' => '...bytes...'],                 // image ops
+  ['index' => 1, 'ok' => true, 'colour' => ['hex' => '#090807', ...]],     // op "pick_colour"
+  ['index' => 2, 'ok' => true, 'palette' => [['hex' => '...', 'share' => 1.0], ...]], // op "palette"
+  ['index' => 3, 'ok' => false, 'error' => ['code' => 'INVALID_IMAGE', 'messageEn' => '...', 'messageHi' => '...']],
+]
+```
+
+`$op` is the short name (`"compress"`, `"resize"`, `"crop"`,
+`"convert"`, `"watermark"`, `"annotate"`, `"pick_colour"`,
+`"palette"`, `"collage"`, `"pixelate"`, `"compress_to_size"`) or the
+full snake_case name (`"compress_image"`, …). For
+`"compress_to_size"` pass `target_bytes` in `$options`; for
+`"annotate"` pass `annotations`; for `"pick_colour"` pass `x` / `y`;
+for `"palette"` pass `count`. An empty input list returns `[]`.
+`"collage"` is not a per-item op: it returns one `INVALID_ARGUMENT`
+result per input — call `makeCollage` once with the full list
+instead.
+
+## Tests
+
+`vendor/bin/phpunit` runs OptionsTest (pure PHP) + ApiTest +
+VectorsTest (82 shared vectors from `shared/test-vectors.json` —
+the same contract the Rust, Python and JS runners check). The
+tests need the `.so` and the CLI binary built by
+`scripts/build-ffi.sh`; fixtures are generated with
+`dusrelimage mock`, the way the other bindings generate theirs.
+
+## Limits
+
+Same as the Rust core in v0.1.0: AVIF input does NOT decode
+(`UNSUPPORTED_FORMAT`); WebP output is always lossless;
+`keep_exif` / `dpi` / `progressive` are accepted but NOT honoured;
+`compress_to_size` quality search is JPEG/AVIF-only; TIFF input
+falls back to PNG output; collage output is always PNG; the PNG
+`palette` quantise flag is not implemented; GIF output is the first
+frame only; no HEIC, no streaming. See [Changelog](/changelog/)
+for the full list.

@@ -1,0 +1,241 @@
+---
+title: C API
+description: The dusrelimage C ABI — 16 dusrelimage_-prefixed exports over the Rust core. The foundation the Go and PHP bindings build on.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+The C API (`crates/dusrelimage-ffi`, v0.1.0) exposes the Rust core to
+C, Go (cgo) and PHP (FFI) callers. It is declared in
+[`dusrelimage.h`](https://github.com/dusmamud/dusrelimage/blob/main/crates/dusrelimage-ffi/dusrelimage.h)
+— 16 `dusrelimage_`-prefixed exports, all thin wrappers over the
+same Rust core the CLI / Python / WASM bindings use, so results
+agree across languages.
+
+## Building
+
+```sh
+# Shared library (Go cgo / PHP FFI link against this):
+cargo build -p dusrelimage-ffi
+# -> target/debug/libdusrelimage_ffi.so
+#    (release: target/release/libdusrelimage_ffi.so)
+
+# Static library:
+# -> target/debug/libdusrelimage_ffi.a  (built by the same command)
+```
+
+Artifacts produced (`crate-type = ["cdylib", "staticlib", "rlib"]`):
+
+| Artifact | Use |
+| --- | --- |
+| `libdusrelimage_ffi.so` / `.dll` / `.dylib` | Go (cgo), PHP (FFI), any C caller |
+| `libdusrelimage_ffi.a` | static linking |
+| `libdusrelimage_ffi.rlib` | Rust integration tests only |
+
+Requirements: Rust 1.85+ (workspace MSRV), gcc for the C smoke test.
+
+## Status codes
+
+Every function except `dusrelimage_last_error`,
+`dusrelimage_free_buffer` and `dusrelimage_version` returns an
+`int32_t` status:
+
+| Code | Name | Meaning |
+| ---: | --- | --- |
+| 0 | `OK` | success |
+| 1 | `INVALID_IMAGE` | input bytes are not a recognisable image |
+| 2 | `UNSUPPORTED_FORMAT` | format known but not supported by this build (e.g. AVIF input) |
+| 3 | `IMAGE_TOO_LARGE` | exceeds `max_pixels` / `max_dimension` |
+| 4 | `TARGET_SIZE_UNREACHABLE` | even the lowest quality exceeds the target size |
+| 5 | `CROP_OUT_OF_BOUNDS` | crop rectangle sticks out of the image |
+| 6 | `PIXEL_OUT_OF_BOUNDS` | pixel coordinate is outside the image |
+| 7 | `INVALID_QUALITY` | quality outside 1-100 |
+| 8 | `INVALID_DIMENSIONS` | a dimension is zero, missing or unusable |
+| 9 | `INVALID_ARGUMENT` | bad JSON, bad value, NULL pointer, … |
+| 10 | `EMPTY_INPUT` | empty input where input is required |
+| 11 | `INVALID_TYPE` | wrong-typed value reached a typed API |
+| 99 | `UNKNOWN` | anything else (including an internal error) |
+
+On failure, `dusrelimage_last_error()` returns the error as JSON:
+
+```json
+{"code": "INVALID_IMAGE", "message_en": "...", "message_hi": "..."}
+```
+
+It returns `NULL` when the last call on the same thread succeeded.
+The last error is thread-local. A successful call clears it.
+
+## Memory ownership
+
+On success, `*out` / `*out_json` points at a heap buffer of
+`*out_len` bytes owned by the caller. Free it exactly once with:
+
+```c
+dusrelimage_free_buffer(ptr, len);
+```
+
+JSON outputs are UTF-8, `*out_len` bytes long, and **not
+NUL-terminated** — use the length (copy and NUL-terminate before
+passing them to C string functions). `dusrelimage_last_error()` and
+`dusrelimage_version()` return NUL-terminated C strings owned by
+the library; do **not** free them. The last-error pointer stays
+valid until the next FFI call on the same thread.
+
+## Functions
+
+### Bytes in / bytes out
+
+```c
+int32_t dusrelimage_compress(const uint8_t *input, size_t input_len,
+                             const char *options_json,
+                             uint8_t **out, size_t *out_len);
+int32_t dusrelimage_compress_to_size(const uint8_t *input, size_t input_len,
+                                     uint64_t target_bytes,
+                                     const char *options_json,
+                                     uint8_t **out, size_t *out_len);
+int32_t dusrelimage_resize(const uint8_t *input, size_t input_len,
+                           const char *options_json,
+                           uint8_t **out, size_t *out_len);
+int32_t dusrelimage_crop(const uint8_t *input, size_t input_len,
+                         const char *options_json,
+                         uint8_t **out, size_t *out_len);
+int32_t dusrelimage_convert(const uint8_t *input, size_t input_len,
+                            const char *options_json,
+                            uint8_t **out, size_t *out_len);
+int32_t dusrelimage_add_watermark(const uint8_t *input, size_t input_len,
+                                  const char *options_json,
+                                  uint8_t **out, size_t *out_len);
+int32_t dusrelimage_annotate(const uint8_t *input, size_t input_len,
+                             const char *annotations_json,
+                             uint8_t **out, size_t *out_len);
+int32_t dusrelimage_make_collage(const uint8_t *const *inputs,
+                                 const size_t *input_lens, size_t count,
+                                 const char *options_json,
+                                 uint8_t **out, size_t *out_len);
+int32_t dusrelimage_pixelate(const uint8_t *input, size_t input_len,
+                             const char *options_json,
+                             uint8_t **out, size_t *out_len);
+```
+
+### JSON out
+
+```c
+int32_t dusrelimage_pick_colour(const uint8_t *input, size_t input_len,
+                                uint32_t x, uint32_t y,
+                                uint8_t **out_json, size_t *out_len);
+int32_t dusrelimage_extract_palette(const uint8_t *input, size_t input_len,
+                                    uint8_t count,
+                                    uint8_t **out_json, size_t *out_len);
+int32_t dusrelimage_get_image_info(const uint8_t *input, size_t input_len,
+                                   const char *options_json,
+                                   uint8_t **out_json, size_t *out_len);
+int32_t dusrelimage_bulk_process(const uint8_t *const *inputs,
+                                 const size_t *input_lens, size_t count,
+                                 const char *op, const char *options_json,
+                                 uint8_t **out_json, size_t *out_len);
+```
+
+### Diagnostics
+
+```c
+const char *dusrelimage_last_error(void);
+void dusrelimage_free_buffer(uint8_t *ptr, size_t len);
+const char *dusrelimage_version(void);
+```
+
+## Options JSON
+
+Every `options_json` parameter is a JSON object using the Rust
+Options structs' serde snake_case field names (see
+[Options](/guides/options/)). `NULL` means "all defaults".
+Partial objects are deep-merged over the defaults, so
+`{"quality": 70}` is a complete `CompressOptions` — plain serde
+would reject it, because the structs' non-`Option` fields have no
+`#[serde(default)]`. (This mirrors the WASM layer, which does the
+same deep-merge.)
+
+| Op | Options struct | Main fields |
+| --- | --- | --- |
+| `compress` / `compress_to_size` | `CompressOptions` | `quality` (1-100, default 80), `format` (`"Jpeg"`/`"Png"`/`"WebP"`/`"Avif"`/`"Gif"`/`"Bmp"` or `null` = keep input), `progressive`, `lossless`, `effort` (0-6) |
+| `resize` | `ResizeOptions` | `width`, `height`, `percent`, `fit` (`"Fit"`/`"Fill"`/`"Stretch"`/`"Crop"`), `filter` (`"Nearest"`/`"Triangle"`/`"CatmullRom"`/`"Gaussian"`/`"Lanczos3"`), `background` |
+| `crop` | `CropOptions` | `x`, `y`, `width`, `height`, `anchor` (`"Center"`, `"TopLeft"`, … or `null`) |
+| `convert` | `ConvertOptions` | `format` (required-ish; default `"Jpeg"`), `quality`, `background`, `progressive` |
+| `add_watermark` | `WatermarkOptions` | `text` (`{"text", "size", "colour"}`), `logo` (`{"image", "scale"}`), `opacity` (0-1), `position` (9 anchors + `"Tiled"`), `rotation_deg`, `margin` |
+| `make_collage` | `CollageOptions` | `layout`, `gap`, `background`, `width`, `height`, `cell_fit` |
+| `pixelate` | `PixelateOptions` | `x`, `y`, `width`, `height` (0 = to the edge), `block_size` (2-100) |
+
+Every options struct embeds `common: CommonOptions`
+(`auto_orient` default true, `keep_exif` default false,
+`dpi`, `max_pixels` default 120,000,000, `max_dimension` default
+16000). Those fields may sit at the top level of the options
+object (`{"max_pixels": 100}`) or nested under `"common"`
+(`{"common": {"max_pixels": 100}}`) — exactly like the WASM layer.
+
+Accepted shorthands (normalised before deserialising, also like
+the WASM layer):
+
+- Hex-string colours (`"#ff0000"`, `"#fff"`, `"#RRGGBBAA"`) in any
+  `colour` / `background` / `fill` field become full Colour objects.
+- Collage layout strings: `"2x2"` → 2×2 grid, `"grid"` → 2×2 grid,
+  `"row"` → `Row`, `"column"` → `Column`. The serde forms
+  (`"Row"`, `{"Grid": {"rows": 2, "cols": 2}}`) work too.
+- A logo watermark's `image` may be a base64 string or a JSON
+  array of byte values.
+- Annotations may use `{"type": "Rect", ...}` form.
+
+Invalid JSON or wrong-typed JSON values return `INVALID_ARGUMENT`
+(status 9). `NULL` input / output pointers return
+`INVALID_ARGUMENT`, never a crash. Empty input (`len == 0`) is
+passed to the core, which reports `EMPTY_INPUT` (status 10).
+
+<Aside type="note" title="get_image_info takes options">
+  `dusrelimage_get_image_info` is the 5-arg form WITH
+  `options_json` — the earlier 4-arg form (no options) dropped
+  `CommonOptions` (`max_pixels` / `max_dimension`) and failed the
+  shared vectors `info-too-large-max-dimension` /
+  `info-too-large-max-pixels`. It was fixed during v0.1.0 for
+  parity with the WASM binding. The pixelate export is
+  `dusrelimage_pixelate` (not `dusrelimage_pixelate_image`).
+</Aside>
+
+## Example (C)
+
+```c
+#include <stdio.h>
+#include <stdlib.h>
+#include "dusrelimage.h"
+
+int main(void) {
+    /* ... read input.png into `in`, `in_len` ... */
+    uint8_t *out = NULL;
+    size_t out_len = 0;
+    int32_t status = dusrelimage_compress(
+        in, in_len, "{\"format\": \"Jpeg\", \"quality\": 70}",
+        &out, &out_len);
+    if (status != DUSRELIMAGE_OK) {
+        fprintf(stderr, "compress failed: %s\n", dusrelimage_last_error());
+        return 1;
+    }
+    /* ... write `out[0..out_len]` ... */
+    dusrelimage_free_buffer(out, out_len);
+    printf("version: %s\n", dusrelimage_version());
+    return 0;
+}
+```
+
+Compile against the built cdylib:
+
+```sh
+gcc example.c -I crates/dusrelimage-ffi \
+    -L target/debug -ldusrelimage_ffi \
+    -Wl,-rpath,$PWD/target/debug
+```
+
+## Limits
+
+Same as the Rust core in v0.1.0: AVIF input does not decode
+(`UNSUPPORTED_FORMAT`); AVIF output works (lossy, 8-bit). WebP
+output is always lossless in v0.1.0; GIF output is the first frame
+only; `keep_exif` / `dpi` / `progressive` are accepted but not
+honoured yet. Whole images live in memory; there is no streaming
+mode.
