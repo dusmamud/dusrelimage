@@ -23,7 +23,7 @@ let package = Package(
             path: "Sources/dusrelimageFFI"
         ),
         // Generated UniFFI Swift bindings (`dusrelimage.swift`) plus
-        // the thin idiomatic wrapper (`DusrelImage.swift`).
+        // the thin idiomatic wrapper (`DusrelImageWrapper.swift`).
         .target(
             name: "DusrelImage",
             dependencies: ["dusrelimageFFI"],

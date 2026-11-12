@@ -11,7 +11,7 @@ and iOS 16+ (Swift 5.9+, Swift Package Manager).
 | Path | What it is |
 |---|---|
 | `Sources/DusrelImage/dusrelimage.swift` | **Generated** UniFFI Swift bindings (4,066 lines). Do NOT edit by hand — regenerate (below). |
-| `Sources/DusrelImage/DusrelImage.swift` | Thin idiomatic wrapper: `Data` in/out, Swift-friendly defaults, one `DusrelError` type, `BulkResult`. This is the public API — use it, not the generated file directly. |
+| `Sources/DusrelImage/DusrelImageWrapper.swift` | Thin idiomatic wrapper: `Data` in/out, Swift-friendly defaults, one `DusrelError` type, `BulkResult`. This is the public API — use it, not the generated file directly. |
 | `Sources/dusrelimageFFI/dusrelimageFFI.h` | **Generated** C header for the UniFFI cdylib. Do NOT edit by hand — regenerate (below). |
 | `Sources/dusrelimageFFI/module.modulemap` | **Generated** modulemap content (renamed from the bindgen output file `dusrelimageFFI.modulemap` — SPM system-library targets require the name `module.modulemap`). Do NOT edit by hand. |
 | `Tests/DusrelImageTests/VectorsTests.swift` | The 82 shared test vectors from `shared/test-vectors.json` (same cases + expectations as the JS/Kotlin runners). Reads the shared file at test time — no copy is committed, so the vectors cannot drift between languages. |
@@ -61,7 +61,7 @@ The generated top-level functions (`compressImage`, `pickColour`, …)
 also exist in the same module, but they use `[UInt8]` and have no
 defaults — the wrapper exists precisely so callers don't have to deal
 with that. (Implementation note: the wrapper's static methods share
-names with the generated functions, so `DusrelImage.swift` binds each
+names with the generated functions, so `DusrelImageWrapper.swift` binds each
 generated function once at file scope under an `ffi`-prefixed
 forwarder and the wrapper methods call those; calling the generated
 function from inside the same-named static method would recurse.)
@@ -96,7 +96,7 @@ hierarchy, UniFFI's Swift generator emits the error enum directly as
 (`.InvalidImage`, `.UnsupportedFormat`, …), each carrying `code`,
 `messageEn` and `messageHi`. There is deliberately NO separate
 wrapper error struct — a second type named `DusrelError` would
-collide with the generated enum in this module. `DusrelImage.swift`
+collide with the generated enum in this module. `DusrelImageWrapper.swift`
 extends the generated enum with uniform `code` / `messageEn` /
 `messageHi` computed properties (plus the `reasonEn` / `reasonHi`
 aliases the JS/Python wrappers expose), so callers read the same

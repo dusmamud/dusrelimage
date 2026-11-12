@@ -10,7 +10,7 @@ side is a thin wrapper plus generated JNA bindings.
 | Path | What it is |
 |---|---|
 | `lib/src/main/kotlin/com/dusrel/image/dusrelimage.kt` | **Generated** UniFFI Kotlin bindings (4,026 lines, JNA-based). Do NOT edit by hand — regenerate (below). |
-| `lib/src/main/kotlin/com/dusrel/image/DusrelImage.kt` | Thin idiomatic wrapper: `ByteArray` in/out, Kotlin-friendly defaults, one `DusrelError` exception. This is the public API — use it, not the generated file directly. |
+| `lib/src/main/kotlin/com/dusrel/image/DusrelImageWrapper.kt` | Thin idiomatic wrapper: `ByteArray` in/out, Kotlin-friendly defaults, one `DusrelError` exception. This is the public API — use it, not the generated file directly. |
 | `lib/src/test/kotlin/com/dusrel/image/VectorsTest.kt` | The 82 shared test vectors from `shared/test-vectors.json` (same cases + expectations as the JS runner). |
 | `lib/src/test/kotlin/com/dusrel/image/DusrelImageTest.kt` | Focused wrapper tests (colours, error mapping, defaults, bulk partial failure). |
 | `scripts/build-jni.sh` | Builds the JNI `.so` for arm64-v8a + armeabi-v7a + x86_64 with cargo-ndk. |

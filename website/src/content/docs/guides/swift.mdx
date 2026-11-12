@@ -86,7 +86,7 @@ hierarchy, UniFFI's Swift generator emits the error enum directly as
 (`.InvalidImage`, `.UnsupportedFormat`, …), each carrying `code`,
 `messageEn` and `messageHi`. There is deliberately NO separate
 wrapper error struct — a second type named `DusrelError` would
-collide with the generated enum in this module. `DusrelImage.swift`
+collide with the generated enum in this module. `DusrelImageWrapper.swift`
 extends the generated enum with uniform `code` / `messageEn` /
 `messageHi` computed properties (plus the `reasonEn` / `reasonHi`
 aliases the JS/Python wrappers expose), so callers read the same

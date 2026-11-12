@@ -99,7 +99,7 @@ jobs:
             --language kotlin --no-format --out-dir /tmp/kotlin-fresh \
             crates/dusrelimage-uniffi/src/dusrelimage.udl
           diff -r /tmp/kotlin-fresh/com/dusrel/image packages/android/lib/src/main/kotlin/com/dusrel/image \
-            --exclude='DusrelImage.kt' || (echo "Generated Kotlin is stale: regenerate with the command in packages/android/README.md and commit the result." && exit 1)
+            --exclude='DusrelImageWrapper.kt' || (echo "Generated Kotlin is stale: regenerate with the command in packages/android/README.md and commit the result." && exit 1)
 
       - name: Build JNI .so for the three ABIs
         run: bash packages/android/scripts/build-jni.sh
