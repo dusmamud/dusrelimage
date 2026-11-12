@@ -1,0 +1,18 @@
+# UniFFI binding generation config for dusrelimage (uniffi 0.29).
+# Read by `uniffi-bindgen generate` — run it via the in-crate binary
+# (see `src/bin/uniffi-bindgen.rs`), which always matches the pinned
+# `uniffi` version. The Swift worker reads the same `.udl`; only the
+# `[bindings.kotlin]` section below is Kotlin-specific.
+
+[bindings.kotlin]
+# Package of the generated Kotlin file: it is checked in under
+# `packages/android/lib/src/main/kotlin/com/dusrel/image/`.
+package_name = "com.dusrel.image"
+# Shared library the generated JNA code loads (`libdusrelimage_uniffi.so`
+# on Android / Linux, `libdusrelimage_uniffi.dylib` on macOS).
+cdylib_name = "dusrelimage_uniffi"
+# Kotlin language level the generated code may use (enum `entries`,
+# etc. need >= 1.9). The Android module uses Kotlin 2.0.21.
+kotlin_target_version = "2.0.0"
+# Android mode: use the Android cleaner for native resources.
+android = true

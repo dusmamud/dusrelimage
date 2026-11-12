@@ -1,0 +1,439 @@
+// dusrelimage — UniFFI interface definition (v0.1.0 contract).
+//
+// This .udl is the shared contract for the Kotlin (Android) and Swift
+// (iOS) bindings: both generated wrappers are built from this file, so
+// it must stay in lockstep with `crates/dusrelimage` (SPEC.md, the
+// `*Options` structs in `options.rs`, the types in `types.rs` and the
+// error codes in `error.rs`). Field names match the Rust structs
+// field-for-field, except where UniFFI cannot express a Rust type —
+// those divergences are marked DIVERGENCE below and the Rust side
+// (`src/lib.rs`) converts between the two shapes.
+//
+// UDL SYNTAX (UniFFI 0.29 / weedle2 — this is WebIDL, NOT Rust):
+// * Throwing functions use the `[Throws=DusrelError]` ATTRIBUTE on
+//   the line above the function. The Rust-style `throws X` suffix
+//   after the signature does NOT parse.
+// * Enums WITH fields (Annotation, CollageLayout, BulkOp, BulkOutput)
+//   and the error enum (DusrelError, whose variants carry code +
+//   messages) use the `[Enum] interface` / `[Error] interface` form
+//   with operation-style variants (`Grid(u32 rows, u32 cols);`),
+//   NOT the `"Variant" { ... };` struct-variant form — weedle2
+//   rejects that. Flat enums (ImageFormat, FitMode, Filter,
+//   Position) use the plain `enum X { "A", "B" };` form.
+// * UDL design notes for the Swift worker (and the Kotlin wrapper):
+// * Bytes are `sequence<u8>` everywhere (never base64 / JSON strings).
+// * Options are typed dictionaries, not JSON strings — UniFFI is
+//   typed, so every `*Options` struct maps field-for-field.
+// * UDL dictionary fields CAN carry defaults for primitives, enums,
+//   strings and `Option` (`= null`); they CANNOT carry a default that
+//   is itself a dictionary. So every `*Options` dictionary has a
+//   REQUIRED `common: CommonOptions` field with no default, and the
+//   `background: Colour` fields are likewise required (no dictionary
+//   default exists). The Kotlin/Swift wrappers MUST fill these: the
+//   Kotlin wrapper (`packages/android`) supplies `CommonOptions()`
+//   (all UDL defaults) and `Colour.white` (`#FFFFFF`) where the
+//   caller does not pass them. The Rust `Default` values are listed
+//   in the comments so wrappers can reproduce them exactly.
+// * DIVERGENCE — `Colour.hsl` is a Rust `(f32, f32, f32)` tuple;
+//   UDL has no tuples, so it is `sequence<f32>` of exactly 3
+//   elements `[h_degrees_0..360, s_0..1, l_0..1]`.
+// * DIVERGENCE — `CommonOptions.dpi` is a Rust `Option<(u32, u32)>`;
+//   UDL has no tuples, so it is `Dpi?` (`{ width, height }`).
+// * DIVERGENCE — `Annotation` `from`/`to` are Rust `(u32, u32)`
+//   tuples; here they are `Point { x, y }` records.
+// * DIVERGENCE — `CollageLayout` has no UDL default: the Rust
+//   default is `Grid { rows: 2, cols: 2 }`, which cannot be written
+//   as a UDL literal. Wrappers fill `Grid { rows: 2, cols: 2 }`
+//   when the caller does not pass a layout.
+// * DIVERGENCE — the core `BulkOp` enum has NO `CompressToSize`
+//   variant (the core `bulk_process` takes `&BulkOp` only). The
+//   JS/Python wrappers add `compress_to_size` to bulk via an extra
+//   `target_bytes` parameter, and this UDL does the same: the
+//   `BulkOp.CompressToSize` variant exists here only, and the Rust
+//   side implements it per item by calling `compress_to_size`
+//   directly (never through the core `BulkOp`).
+// * `bulk_process` does NOT throw: a failing item never aborts the
+//   batch — the per-item error is carried in `BulkItemResult` as
+//   `error_code` / `error_message_en` / `error_message_hi`, with
+//   `ok == false` and `output == null`. An empty input list returns
+//   an empty list (core semantics).
+// * Every error variant carries `code` + `message_en` +
+//   `message_hi`: `code` is always the stable code string (e.g.
+//   `"INVALID_IMAGE"`) and equals the variant name in SNAKE_UPPER
+//   form, so wrappers can also derive it from the variant.
+// * `make_test_image` and `version` are EXTRAS beyond the 13 core
+//   functions: test helpers mirroring the JS/Python `makeTestImage`
+//   (same deterministic `solid` / `gradient` / `noise` builders as
+//   the CLI `mock` command) and the crate version string. They are
+//   not part of the 10 tools; the Kotlin vector tests use
+//   `make_test_image` to build fixtures without shelling out.
+
+namespace dusrelimage {
+    [Throws=DusrelError]
+    sequence<u8> compress_image(sequence<u8> input, CompressOptions options);
+    [Throws=DusrelError]
+    sequence<u8> compress_to_size(sequence<u8> input, u64 target_bytes, CompressOptions options);
+    [Throws=DusrelError]
+    sequence<u8> resize_image(sequence<u8> input, ResizeOptions options);
+    [Throws=DusrelError]
+    sequence<u8> crop_image(sequence<u8> input, CropOptions options);
+    [Throws=DusrelError]
+    sequence<u8> convert_image(sequence<u8> input, ConvertOptions options);
+    [Throws=DusrelError]
+    sequence<u8> add_watermark(sequence<u8> input, WatermarkOptions options);
+    [Throws=DusrelError]
+    sequence<u8> annotate_image(sequence<u8> input, sequence<Annotation> annotations);
+    [Throws=DusrelError]
+    Colour pick_colour(sequence<u8> input, u32 x, u32 y);
+    [Throws=DusrelError]
+    sequence<PaletteColour> extract_palette(sequence<u8> input, u8 count);
+    [Throws=DusrelError]
+    sequence<u8> make_collage(sequence<sequence<u8>> inputs, CollageOptions options);
+    [Throws=DusrelError]
+    sequence<u8> pixelate_image(sequence<u8> input, PixelateOptions options);
+    [Throws=DusrelError]
+    ImageInfo get_image_info(sequence<u8> input, CommonOptions options);
+    sequence<BulkItemResult> bulk_process(sequence<sequence<u8>> inputs, BulkOp op);
+    [Throws=DusrelError]
+    sequence<u8> make_test_image(string kind, u32 width, u32 height, u64 seed);
+    string version();
+};
+
+// ---------------------------------------------------------------------------
+// Errors — all 11 stable codes (SPEC section 4). Every variant carries
+// the code string plus the English + Hindi messages from the core.
+// ---------------------------------------------------------------------------
+
+[Error]
+interface DusrelError {
+    InvalidImage(string code, string message_en, string message_hi);
+    UnsupportedFormat(string code, string message_en, string message_hi);
+    ImageTooLarge(string code, string message_en, string message_hi);
+    TargetSizeUnreachable(string code, string message_en, string message_hi);
+    CropOutOfBounds(string code, string message_en, string message_hi);
+    PixelOutOfBounds(string code, string message_en, string message_hi);
+    InvalidQuality(string code, string message_en, string message_hi);
+    InvalidDimensions(string code, string message_en, string message_hi);
+    InvalidArgument(string code, string message_en, string message_hi);
+    EmptyInput(string code, string message_en, string message_hi);
+    InvalidType(string code, string message_en, string message_hi);
+};
+
+// ---------------------------------------------------------------------------
+// Value types
+// ---------------------------------------------------------------------------
+
+/// Output image format. TIFF is deliberately absent: it is an input-only
+/// format (it decodes, but falls back to PNG on output).
+enum ImageFormat {
+    "Jpeg",
+    "Png",
+    "WebP",
+    "Avif",
+    "Gif",
+    "Bmp",
+};
+
+/// How a resize fits the image into the target box.
+enum FitMode {
+    "Fit",
+    "Fill",
+    "Stretch",
+    "Crop",
+};
+
+/// Resampling filter.
+enum Filter {
+    "Nearest",
+    "Triangle",
+    "CatmullRom",
+    "Gaussian",
+    "Lanczos3",
+};
+
+/// Anchor position: 9 anchors + `Tiled` (watermark only; cropping
+/// treats `Tiled` as `Center`).
+enum Position {
+    "TopLeft",
+    "TopCenter",
+    "TopRight",
+    "CenterLeft",
+    "Center",
+    "CenterRight",
+    "BottomLeft",
+    "BottomCenter",
+    "BottomRight",
+    "Tiled",
+};
+
+/// A 2-D point (used for annotation `from`/`to`; see DIVERGENCE note).
+dictionary Point {
+    u32 x;
+    u32 y;
+};
+
+/// DPI pair (used for `CommonOptions.dpi`; see DIVERGENCE note).
+dictionary Dpi {
+    u32 width;
+    u32 height;
+};
+
+/// A colour: 8-bit RGBA + hex string + HSL.
+/// `hex` is always `"#RRGGBB"` (alpha is NOT in the hex string).
+/// `hsl` is exactly `[h_degrees_0..360, s_0..1, l_0..1]`.
+dictionary Colour {
+    string hex;
+    u8 r;
+    u8 g;
+    u8 b;
+    u8 a;
+    sequence<f32> hsl;
+};
+
+/// Summary of an image, from `get_image_info`.
+/// `format` is a lowercase short name (`"jpeg"`, `"png"`, `"webp"`,
+/// `"avif"`, `"gif"`, `"bmp"`, `"tiff"`, ...). `colour_type` is the
+/// lowercase `image`-crate colour type (`"rgb8"`, `"rgba8"`, ...).
+dictionary ImageInfo {
+    string format;
+    u32 width;
+    u32 height;
+    boolean has_alpha;
+    string colour_type;
+    u64 file_size;
+};
+
+/// One palette entry: a dominant colour and its share of the sampled
+/// pixels, `0..1`.
+dictionary PaletteColour {
+    Colour colour;
+    f32 share;
+};
+
+/// A text watermark: string, size in px, colour.
+dictionary TextWatermark {
+    string text;
+    f32 size = 48.0;
+    Colour colour;
+};
+
+/// A logo watermark: raw image bytes + a scale factor
+/// (`1.0` = natural size, `0.5` = half size).
+dictionary ImageWatermark {
+    sequence<u8> image;
+    f32 scale = 1.0;
+};
+
+/// One annotation shape. All coordinates are absolute pixels.
+/// `fill` is `null` for outline-only, `Some(colour)` for a filled shape.
+[Enum]
+interface Annotation {
+    Arrow(Point from, Point to, Colour colour, u32 width);
+    Rect(u32 x, u32 y, u32 w, u32 h, Colour colour, u32 width, Colour? fill);
+    Ellipse(u32 x, u32 y, u32 w, u32 h, Colour colour, u32 width, Colour? fill);
+    Line(Point from, Point to, Colour colour, u32 width);
+    Text(u32 x, u32 y, string text, f32 size, Colour colour);
+};
+
+/// Collage layout. `masonry` is out of scope for v0.1.0.
+/// Rust default is `Grid { rows: 2, cols: 2 }` (see DIVERGENCE note).
+[Enum]
+interface CollageLayout {
+    Grid(u32 rows, u32 cols);
+    Row();
+    Column();
+};
+
+// ---------------------------------------------------------------------------
+// Options — every op takes its Options dictionary, each embedding
+// `common: CommonOptions` (required, no UDL default — see header).
+// ---------------------------------------------------------------------------
+
+/// Options shared by every tool.
+dictionary CommonOptions {
+    /// Apply EXIF orientation on load (default true).
+    boolean auto_orient = true;
+    /// Keep EXIF / ICC / XMP on output (default false = strip).
+    /// v0.1.0: accepted but NOT honoured — output is always stripped.
+    boolean keep_exif = false;
+    /// DPI to write on JPEG/PNG output (default unset).
+    /// v0.1.0: accepted but NOT embedded.
+    Dpi? dpi = null;
+    /// Refuse images with more pixels than this (default 120,000,000).
+    u64 max_pixels = 120000000;
+    /// Refuse images with a side longer than this (default 16000).
+    u32 max_dimension = 16000;
+};
+
+/// Tool 1 — compressor options.
+dictionary CompressOptions {
+    CommonOptions common;
+    /// Quality 1-100 (default 80).
+    u8 quality = 80;
+    /// Output format; `null` keeps the input format (TIFF input falls
+    /// back to PNG).
+    ImageFormat? format = null;
+    /// Progressive JPEG / interlaced PNG (default false).
+    /// v0.1.0: accepted but NOT honoured.
+    boolean progressive = false;
+    /// Lossless output (WebP/PNG only; default false).
+    boolean lossless = false;
+    /// Encoding effort 0-6 (default 4).
+    u8 effort = 4;
+};
+
+/// Tool 2 — resizer options.
+dictionary ResizeOptions {
+    CommonOptions common;
+    /// Target width in px. With `height` unset, height follows the
+    /// aspect ratio.
+    u32? width = null;
+    /// Target height in px. With `width` unset, width follows the
+    /// aspect ratio.
+    u32? height = null;
+    /// Scale in percent (`100.0` = original size). Cannot be combined
+    /// with `width`/`height`.
+    f32? percent = null;
+    /// How the image fits the target box (default `Fit`).
+    FitMode fit = "Fit";
+    /// Resampling filter (default `Lanczos3`).
+    Filter filter = "Lanczos3";
+    /// Canvas colour used by `FitMode::Fill` (default white `#FFFFFF`;
+    /// required here — no dictionary default exists, wrappers fill it).
+    Colour background;
+};
+
+/// Tool 3 — cropper options.
+dictionary CropOptions {
+    CommonOptions common;
+    /// Left edge in px (used when `anchor` is `null`; default 0).
+    u32 x = 0;
+    /// Top edge in px (used when `anchor` is `null`; default 0).
+    u32 y = 0;
+    /// Crop width in px (must be > 0; required).
+    u32 width;
+    /// Crop height in px (must be > 0; required).
+    u32 height;
+    /// Anchor preset: when set, the `width` x `height` rectangle is
+    /// placed at the anchor and `x`/`y` are ignored. `Tiled` is
+    /// treated as `Center`.
+    Position? anchor = null;
+};
+
+/// Tool 4 — converter options.
+dictionary ConvertOptions {
+    CommonOptions common;
+    /// Target format (required; callers must always set it).
+    ImageFormat format;
+    /// Quality 1-100 (default 80).
+    u8 quality = 80;
+    /// Background used to flatten alpha when the target has none
+    /// (JPEG/BMP). Default white `#FFFFFF` (required here — no
+    /// dictionary default exists, wrappers fill it).
+    Colour background;
+    /// Progressive JPEG / interlaced PNG (default false).
+    /// v0.1.0: accepted but NOT honoured.
+    boolean progressive = false;
+};
+
+/// Tool 5 — watermark options.
+dictionary WatermarkOptions {
+    CommonOptions common;
+    /// Text watermark, if any.
+    TextWatermark? text = null;
+    /// Logo watermark (image bytes + scale), if any.
+    ImageWatermark? logo = null;
+    /// Opacity 0-1 (default 0.5).
+    f32 opacity = 0.5;
+    /// Anchor position, incl. `Tiled` for a repeated pattern
+    /// (default `BottomRight`).
+    Position position = "BottomRight";
+    /// Rotation in degrees (default 0.0).
+    f32 rotation_deg = 0.0;
+    /// Margin from the image edge in px (default 16).
+    u32 margin = 16;
+};
+
+/// Tool 9 — collage options.
+dictionary CollageOptions {
+    CommonOptions common;
+    /// Layout (Rust default `Grid { rows: 2, cols: 2 }`; required
+    /// here — no UDL default exists, wrappers fill it).
+    CollageLayout layout;
+    /// Gap between cells in px (default 8).
+    u32 gap = 8;
+    /// Background colour (default white `#FFFFFF`; required here —
+    /// no dictionary default exists, wrappers fill it).
+    Colour background;
+    /// Output width in px (default 1200).
+    u32 width = 1200;
+    /// Output height in px (default 1200).
+    u32 height = 1200;
+    /// Per-cell fit mode (default `Fit`).
+    FitMode cell_fit = "Fit";
+};
+
+/// Tool 10 — pixelator options.
+/// `width`/`height` of 0 mean "to the right/bottom edge of the image",
+/// so all zeros pixelates the whole image.
+dictionary PixelateOptions {
+    CommonOptions common;
+    /// Left edge in px (default 0).
+    u32 x = 0;
+    /// Top edge in px (default 0).
+    u32 y = 0;
+    /// Rectangle width in px (0 = to the image edge; default 0).
+    u32 width = 0;
+    /// Rectangle height in px (0 = to the image edge; default 0).
+    u32 height = 0;
+    /// Block size in px, 2-100 (default 10).
+    u32 block_size = 10;
+};
+
+// ---------------------------------------------------------------------------
+// Bulk processing — one op over many inputs, one result per input.
+// ---------------------------------------------------------------------------
+
+/// One of the ten tools, with its options, for `bulk_process`.
+/// `CompressToSize` is a UniFFI-only variant (see DIVERGENCE note).
+/// `Collage` is present so the ten tools map 1:1, but it is NOT a
+/// per-item op: `bulk_process` returns `INVALID_ARGUMENT` for every
+/// item — call `make_collage` once with the full list instead.
+[Enum]
+interface BulkOp {
+    Compress(CompressOptions options);
+    CompressToSize(CompressOptions options, u64 target_bytes);
+    Resize(ResizeOptions options);
+    Crop(CropOptions options);
+    Convert(ConvertOptions options);
+    Watermark(WatermarkOptions options);
+    Annotate(sequence<Annotation> annotations);
+    PickColour(u32 x, u32 y);
+    Palette(u8 count);
+    Collage(CollageOptions options);
+    Pixelate(PixelateOptions options);
+};
+
+/// The per-item output of `bulk_process`: an image, a single colour,
+/// or a palette, depending on the op.
+[Enum]
+interface BulkOutput {
+    Image(sequence<u8> bytes);
+    Colour(Colour colour);
+    Palette(sequence<PaletteColour> palette);
+};
+
+/// One item of a `bulk_process` result: the input's `index` and its
+/// outcome. On success `ok` is true and `output` holds the result;
+/// on failure `ok` is false, `output` is `null`, and the error is
+/// carried flat in `error_code` / `error_message_en` /
+/// `error_message_hi` (the error enum cannot be a dictionary field,
+/// so the code + messages are inlined here).
+dictionary BulkItemResult {
+    u32 index;
+    boolean ok;
+    BulkOutput? output = null;
+    string? error_code = null;
+    string? error_message_en = null;
+    string? error_message_hi = null;
+};

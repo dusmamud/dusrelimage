@@ -1,0 +1,27 @@
+[package]
+name = "dusrelimage-uniffi"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+# Binding crate — never published to crates.io on its own; only the
+# core `dusrelimage` crate is published. Prevents release-plz from
+# trying to publish it (its path dependency has no version requirement).
+publish = false
+description = "UniFFI bindings for dusrelimage — Kotlin and Swift wrappers over the Rust core"
+
+[lib]
+# cdylib: the shared library UniFFI generates Kotlin/Swift bindings
+# from (Android .so via cargo-ndk, iOS static lib via cargo-lipo).
+# rlib: so `cargo test` / `cargo clippy` can exercise this crate directly.
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+dusrelimage = { path = "../dusrelimage" }
+# `cli` enables `uniffi::uniffi_bindgen_main()` for the
+# `src/bin/uniffi-bindgen.rs` binary (see that file).
+uniffi = { version = "0.29", features = ["cli"] }
+
+[build-dependencies]
+# The `build` feature exposes `uniffi::generate_scaffolding`, used by
+# build.rs to compile the UDL into Rust scaffolding.
+uniffi = { version = "0.29", features = ["build"] }
